@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { width: 460px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+    th, td { text-align: left; padding: 4px 6px; border-bottom: 1px solid #e3e6ea; vertical-align: top; }
+    th { background: #f3f5f8; }
+    .tag { padding: 1px 6px; border-radius: 8px; font-size: 11px; white-space: nowrap; }
+    .done { background: #d9f2df; color: #145c24; }
+    .error { background: #fbdcdc; color: #8a1313; }
+    .skipped { background: #fff0cc; color: #7a5600; }
+    .pending { background: #e8ecf1; color: #44505e; }
+    .dry { background: #dbe8fb; color: #1a4a8a; }
+    .row { display: flex; gap: 8px; align-items: center; }
+    .muted { color: #667; font-size: 12px; }
+    .why { color: #667; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <h1>Đẩy văn bản lên BTGĐ</h1>
+  <div class="row">
+    <button id="start">Bắt đầu đẩy</button>
+    <button id="stop" class="secondary">Dừng</button>
+    <button id="opts" class="secondary">Cài đặt</button>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <button id="export" class="secondary">Xuất Excel rà soát</button>
+    <button id="clearHist" class="secondary">Xóa lịch sử</button>
+    <span id="histCount" class="muted"></span>
+  </div>
+  <p id="msg" class="muted"></p>
+  <p id="status"></p>
+  <div id="list"></div>
+  <script src="shared.js"></script>
+  <script src="xlsx.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

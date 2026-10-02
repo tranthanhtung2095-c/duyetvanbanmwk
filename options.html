@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <title>Cài đặt - Đẩy văn bản lên BTGĐ</title>
+  <link rel="stylesheet" href="style.css">
+  <style>body { max-width: 720px; margin: 20px auto; }</style>
+</head>
+<body>
+  <h1>Cài đặt - Đẩy văn bản lên BTGĐ</h1>
+
+  <h2>1. MEDworking</h2>
+  <label for="listUrl">Địa chỉ trang Văn bản đến</label>
+  <input type="text" id="listUrl" placeholder="Dán nguyên địa chỉ trên thanh địa chỉ khi đang ở trang Văn bản đến">
+  <p class="hint">Mặc định là trang Văn bản đến của medworking.medlatec.vn, thường không cần đổi.</p>
+
+  <h2>2. AI phân loại</h2>
+  <div class="inline">
+    <input type="radio" name="provider" id="p-deepseek" value="deepseek"><label for="p-deepseek">DeepSeek</label>
+    &nbsp;&nbsp;
+    <input type="radio" name="provider" id="p-claude" value="claude"><label for="p-claude">Claude</label>
+  </div>
+  <label for="deepseekKey">API key DeepSeek</label>
+  <input type="password" id="deepseekKey" autocomplete="off">
+  <label for="deepseekModel">Model DeepSeek</label>
+  <input type="text" id="deepseekModel">
+  <p class="warn">Nội dung văn bản (tên, mã nhân viên, điểm đánh giá...) được gửi tới máy chủ của nhà cung cấp AI đã chọn.</p>
+  <label for="claudeKey">API key Claude</label>
+  <input type="password" id="claudeKey" autocomplete="off">
+  <label for="claudeModel">Model Claude</label>
+  <input type="text" id="claudeModel">
+
+  <h2>3. Chế độ chạy</h2>
+  <p class="hint">Extension chỉ chạy khi bấm "Bắt đầu đẩy" trong popup, và đẩy liên tục đến khi tab Chờ duyệt hết văn bản.</p>
+  <div class="inline" style="margin-top:8px">
+    <input type="checkbox" id="dryRun"><label for="dryRun">Chế độ chạy thử (chọn người nhận nhưng không bấm Đồng ý)</label>
+  </div>
+  <div class="inline" style="margin-top:8px">
+    <label for="maxAgeMonths" style="margin-left:0">Chỉ đẩy văn bản tạo trong</label>
+    <input type="number" id="maxAgeMonths" min="0" max="60" style="width:70px">
+    <label for="maxAgeMonths">tháng gần đây (0 = không giới hạn)</label>
+  </div>
+
+  <h2>4. Ban Tổng giám đốc</h2>
+  <label for="members">Thành viên (mỗi dòng: mã | tên, đúng như trong dropdown MEDworking)</label>
+  <textarea id="members" rows="6"></textarea>
+  <label for="fallbackIds">Người nhận mặc định khi AI không xác định được (mã, cách nhau bằng dấu phẩy)</label>
+  <input type="text" id="fallbackIds" placeholder="Để trống = bỏ qua văn bản đó, không đẩy">
+
+  <label for="rules">Quy luật phân công (gửi nguyên văn cho AI)</label>
+  <textarea id="rules" rows="14"></textarea>
+  <div style="margin-top:6px"><button class="secondary" id="resetRules" type="button">Khôi phục quy luật mặc định</button></div>
+
+  <p style="margin-top:20px">
+    <button id="save">Lưu</button>
+    <span id="msg" class="hint"></span>
+  </p>
+
+  <script src="shared.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

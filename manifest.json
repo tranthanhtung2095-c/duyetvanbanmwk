@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "MEDworking - Đẩy văn bản lên BTGĐ",
+  "version": "0.3.3",
+  "description": "Bấm Bắt đầu để đọc hết tab Chờ duyệt trong Văn bản đến, dùng AI xác định thành viên Ban Tổng giám đốc liên quan và đẩy văn bản lên.",
+  "permissions": ["storage", "unlimitedStorage", "scripting", "notifications", "debugger"],
+  "host_permissions": [
+    "https://api.deepseek.com/*",
+    "https://api.anthropic.com/*",
+    "https://medworking.medlatec.vn/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://medworking.medlatec.vn/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": { "service_worker": "background.js" },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Đẩy văn bản lên BTGĐ"
+  },
+  "options_page": "options.html",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
