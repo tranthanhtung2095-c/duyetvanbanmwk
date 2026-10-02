@@ -16,17 +16,46 @@ async function getRun() {
   return run || null;
 }
 
-// Không còn lịch chạy tự động: chỉ chạy khi bấm "Bắt đầu đẩy" trong popup.
-// Bản cũ có hẹn giờ hàng ngày và đăng ký content script động: dọn đi khi cài/cập nhật.
+// ---------- Tự chạy định kỳ ----------
+// Cứ autoMinutes phút (mặc định 30) tự mở MEDworking, quét tab Chờ duyệt và đẩy văn bản mới.
+// Chrome phải đang mở; hẹn giờ có thể mất khi khởi động lại trình duyệt nên đặt lại ở onStartup.
+
+const AUTO_ALARM = 'auto-run';
+
+async function scheduleAuto() {
+  const s = await getSettings();
+  const m = Math.max(0, Number(s.autoMinutes) || 0);
+  const cur = await chrome.alarms.get(AUTO_ALARM);
+  if (!m) {
+    if (cur) await chrome.alarms.clear(AUTO_ALARM);
+    return;
+  }
+  if (!cur || cur.periodInMinutes !== m) {
+    await chrome.alarms.create(AUTO_ALARM, { delayInMinutes: m, periodInMinutes: m });
+  }
+}
+
+chrome.alarms.onAlarm.addListener(async alarm => {
+  if (alarm.name !== AUTO_ALARM) return;
+  const s = await getSettings();
+  if (!(Number(s.autoMinutes) > 0)) return;
+  await startRun('auto');
+});
+
+chrome.storage.onChanged.addListener(changes => {
+  if (changes.settings) scheduleAuto();
+});
+
+chrome.runtime.onStartup.addListener(scheduleAuto);
+
+// Bản cũ đăng ký content script động: dọn đi khi cài/cập nhật.
 chrome.runtime.onInstalled.addListener(async () => {
   try {
     await chrome.scripting.unregisterContentScripts({ ids: ['med-cs'] });
   } catch (e) {}
-  try {
-    if (chrome.alarms) await chrome.alarms.clearAll();
-  } catch (e) {}
   await chrome.storage.local.remove('lastRunDate');
   await getSettings(); // cập nhật quy luật phân công mới cho cài đặt đã lưu
+  await scheduleAuto();
 });
 
 // ---------- Bấm chuột thật qua debugger ----------
@@ -107,6 +136,13 @@ function trustedKey(tabId, key) {
 
 // ---------- Bắt đầu / dừng / kết thúc một lượt chạy ----------
 
+async function closeWindow(windowId) {
+  if (windowId == null) return;
+  try {
+    await chrome.windows.remove(windowId);
+  } catch (e) {}
+}
+
 async function startRun(trigger) {
   const s = await getSettings();
   if (!s.listUrl) {
@@ -121,6 +157,11 @@ async function startRun(trigger) {
   const cur = await getRun();
   if (cur && cur.active && Date.now() - cur.updatedAt < STALE_MS) {
     return { ok: false, error: 'Đang có một lượt chạy khác.' };
+  }
+  // lượt tự chạy trước bị treo: đóng cửa sổ của nó
+  if (cur && cur.active && cur.trigger === 'auto') {
+    await detachDebugger(cur.tabId);
+    await closeWindow(cur.windowId);
   }
   const win = await chrome.windows.create({ url: s.listUrl, focused: true, state: 'maximized' });
   const tab = win.tabs[0];
@@ -137,6 +178,7 @@ async function startRun(trigger) {
     maxAgeMonths: Number(s.maxAgeMonths) || 0,
     listUrl: s.listUrl,
     tabId: tab.id,
+    windowId: win.id,
     startedAt: Date.now(),
     updatedAt: Date.now(),
     items: null,
@@ -158,7 +200,7 @@ async function stopRun() {
   return { ok: true };
 }
 
-async function finishRun(note) {
+async function finishRun(note, alert) {
   const run = await getRun();
   if (!run) return { ok: true };
   run.active = false;
@@ -167,13 +209,18 @@ async function finishRun(note) {
   await chrome.storage.local.set({ run });
   await detachDebugger(run.tabId);
   const all = run.items || [];
-  const items = all.filter(i => i.status !== 'old');
+  const items = all.filter(i => !HIDDEN_STATUS.includes(i.status));
   const c = st => all.filter(i => i.status === st).length;
   const old = c('old') ? ` Không đẩy ${c('old')} văn bản quá ${run.maxAgeMonths} tháng.` : '';
+  const ret = c('returned') ? ` ${c('returned')} văn bản BTGĐ đã trả lại, không đẩy.` : '';
   const msg = run.dry
-    ? `Chạy thử xong: ${c('dry')} văn bản chọn được người nhận, ${c('skipped')} bỏ qua, ${c('error')} lỗi.${old}`
-    : `Đã đẩy ${c('done')}/${items.length} văn bản. Bỏ qua ${c('skipped')}, lỗi ${c('error')}.${old}`;
-  notify('Đẩy văn bản lên BTGĐ', items.length ? (note ? msg + ' ' + note : msg) : note || msg);
+    ? `Chạy thử xong: ${c('dry')} văn bản chọn được người nhận, ${c('skipped')} bỏ qua, ${c('error')} lỗi.${ret}${old}`
+    : `Đã đẩy ${c('done')}/${items.length} văn bản. Bỏ qua ${c('skipped')}, lỗi ${c('error')}.${ret}${old}`;
+  // tự chạy: chỉ báo khi có văn bản mới được xử lý hoặc có sự cố, rồi đóng cửa sổ
+  if (run.trigger !== 'auto' || items.length || alert) {
+    notify('Đẩy văn bản lên BTGĐ', items.length ? (note ? msg + ' ' + note : msg) : note || msg);
+  }
+  if (run.trigger === 'auto') await closeWindow(run.windowId);
   return { ok: true };
 }
 
@@ -326,7 +373,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       case 'STOP':
         return await stopRun();
       case 'FINISH':
-        return await finishRun(msg.note);
+        return await finishRun(msg.note, msg.alert);
       default:
         return { error: 'unknown message' };
     }

@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "MEDworking - Đẩy văn bản lên BTGĐ",
-  "version": "0.3.3",
-  "description": "Bấm Bắt đầu để đọc hết tab Chờ duyệt trong Văn bản đến, dùng AI xác định thành viên Ban Tổng giám đốc liên quan và đẩy văn bản lên.",
-  "permissions": ["storage", "unlimitedStorage", "scripting", "notifications", "debugger"],
+  "version": "0.4.0",
+  "description": "Cứ 30 phút (hoặc khi bấm Bắt đầu) đọc tab Chờ duyệt trong Văn bản đến, dùng AI xác định thành viên Ban Tổng giám đốc liên quan và đẩy văn bản lên.",
+  "permissions": ["storage", "unlimitedStorage", "scripting", "notifications", "debugger", "alarms"],
   "host_permissions": [
     "https://api.deepseek.com/*",
     "https://api.anthropic.com/*",
@@ -12,7 +12,7 @@
   "content_scripts": [
     {
       "matches": ["https://medworking.medlatec.vn/*"],
-      "js": ["content.js"],
+      "js": ["shared.js", "content.js"],
       "run_at": "document_idle"
     }
   ],

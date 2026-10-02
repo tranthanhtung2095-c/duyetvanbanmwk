@@ -6,7 +6,9 @@ const LABEL = {
   skipped: 'Bỏ qua',
   error: 'Lỗi',
   dry: 'Thử OK',
-  old: 'Quá hạn'
+  old: 'Quá hạn',
+  returned: 'BTGĐ trả lại',
+  prev: 'Đã xử lý trước'
 };
 
 function esc(s) {
@@ -18,8 +20,21 @@ async function renderHistCount() {
   $('histCount').textContent = `Lịch sử: ${history.length} văn bản`;
 }
 
+async function renderAuto() {
+  const s = await getSettings();
+  const m = Number(s.autoMinutes) || 0;
+  if (!m) {
+    $('auto').textContent = 'Tự chạy: đang tắt (bật trong Cài đặt).';
+    return;
+  }
+  const a = await chrome.alarms.get('auto-run');
+  const next = a ? ', lượt tới lúc ' + new Date(a.scheduledTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '';
+  $('auto').textContent = `Tự chạy: mỗi ${m} phút${next}.`;
+}
+
 async function render() {
   renderHistCount();
+  renderAuto();
   const { run } = await chrome.storage.local.get('run');
   const s = await getSettings();
   const names = Object.fromEntries(s.members.map(m => [String(m.id), m.name]));
@@ -30,17 +45,18 @@ async function render() {
     return;
   }
   const all = run.items || [];
-  const items = all.filter(i => i.status !== 'old'); // văn bản quá giới hạn tháng: không hiện từng dòng
+  const items = all.filter(i => !HIDDEN_STATUS.includes(i.status)); // quá hạn tháng / đã xử lý lượt trước: không hiện từng dòng
   const c = st => all.filter(i => i.status === st).length;
   const when = new Date(run.startedAt).toLocaleString('vi-VN');
   let line;
   if (run.active) {
-    line = `Đang chạy (bắt đầu ${when}${run.dry ? ', chế độ chạy thử' : ''}): ${items.length - c('pending')}/${items.length || '?'} văn bản.`;
+    line = `Đang chạy (${run.trigger === 'auto' ? 'tự chạy, ' : ''}bắt đầu ${when}${run.dry ? ', chế độ chạy thử' : ''}): ${items.length - c('pending')}/${items.length || '?'} văn bản.`;
   } else {
-    line = `Lượt chạy ${when}${run.stopped ? ' (đã dừng)' : ''}: đã đẩy ${c('done')}, thử ${c('dry')}, bỏ qua ${c('skipped')}, lỗi ${c('error')}, còn lại ${c('pending')}.`;
+    line = `Lượt ${run.trigger === 'auto' ? 'tự chạy' : 'chạy'} ${when}${run.stopped ? ' (đã dừng)' : ''}: đã đẩy ${c('done')}, thử ${c('dry')}, BTGĐ trả lại ${c('returned')}, bỏ qua ${c('skipped')}, lỗi ${c('error')}, còn lại ${c('pending')}.`;
     if (run.note) line += ' ' + run.note;
   }
   if (c('old')) line += ` Không đẩy ${c('old')} văn bản quá ${run.maxAgeMonths} tháng.`;
+  if (c('prev')) line += ` ${c('prev')} văn bản đã xử lý ở lượt trước, không xử lý lại.`;
   if (run.dateFilterOk === false) line += ' Lưu ý: không điền được ô Ngày tạo, đã lọc theo ngày trong mã văn bản.';
   $('status').textContent = line;
 
@@ -77,7 +93,8 @@ const RESULT_LABEL = {
   done: 'Đã đẩy',
   dry: 'Chạy thử (chưa đẩy)',
   skipped: 'Bỏ qua',
-  error: 'Lỗi'
+  error: 'Lỗi',
+  returned: 'BTGĐ trả lại (không đẩy)'
 };
 
 function fmtTime(t) {
@@ -123,7 +140,7 @@ function buildReviewWorkbook(history, s) {
       (h.recipients || []).join(', '),
       (h.recipients || []).map(id => names[id] || id).join(', '),
       h.reason,
-      h.status === 'skipped' || h.status === 'error' ? '' : h.confident === false ? 'Không' : 'Có',
+      ['skipped', 'error', 'returned'].includes(h.status) ? '' : h.confident === false ? 'Không' : 'Có',
       h.usedFallback ? 'Có' : '',
       h.error,
       h.excerpt,

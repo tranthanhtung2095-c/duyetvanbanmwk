@@ -9,7 +9,10 @@
 4. Bấm **Lưu**.
 
 ## Cách chạy
-- Bấm biểu tượng extension, chọn **Bắt đầu đẩy**. Không còn lịch chạy tự động lúc 8h.
+- **Tự chạy mỗi 30 phút** (đổi số phút hoặc tắt trong Cài đặt, mục 3; tối thiểu 10 phút). Mỗi lượt mở một cửa sổ MEDworking, quét tab Chờ duyệt, đẩy văn bản mới, xong thì tự đóng cửa sổ. Chỉ hiện thông báo khi có văn bản mới được xử lý hoặc gặp sự cố (ví dụ MEDworking hết phiên đăng nhập).
+- Điều kiện: Chrome đang mở, máy không ngủ, tài khoản MEDworking vẫn đăng nhập trong Chrome.
+- Lượt tự chạy không xử lý lại văn bản đã đẩy, đã bỏ qua hoặc đã lỗi 3 lần ở các lượt trước. Muốn thử lại thì bấm **Bắt đầu đẩy**.
+- Bấm biểu tượng extension, chọn **Bắt đầu đẩy** để chạy ngay.
 - Extension đẩy liên tục: xử lý xong danh sách thì quét lại tab Chờ duyệt, còn văn bản mới thì đẩy tiếp, đến khi không còn văn bản nào mới thì dừng và báo kết quả. Văn bản bị bỏ qua hoặc lỗi nằm lại trong Chờ duyệt để xử lý thủ công, không bị thử lại vô hạn.
 - Bấm **Dừng** để dừng giữa chừng.
 - Chỉ đẩy văn bản tạo trong 6 tháng gần đây (đổi số tháng trong Cài đặt, mục 3). Trước khi quét, extension điền ô "Ngày tạo" trên trang (từ ngày cách đây 6 tháng đến hôm nay) rồi bấm Tìm kiếm. Ngày lấy từ mã văn bản (VB24092026-… là 24/09/2026), không có thì lấy cột Ngày tạo.
@@ -23,6 +26,9 @@ Mọi văn bản đã xử lý (đã đẩy, chạy thử, bỏ qua, lỗi) đư
 Mỗi văn bản trong tab Chờ duyệt: đọc nội dung, AI chọn thành viên BTGĐ liên quan, bấm Duyệt văn bản, chọn người nhận, bấm Đồng ý, chờ chuyển, bấm Thoát về danh sách. Sau cùng đối chiếu danh sách để xác nhận văn bản đã rời tab Chờ duyệt.
 
 Quy luật phân công (Cài đặt, mục 4): đề xuất nhân sự gửi thành viên BTGĐ phụ trách bộ phận của CBNV được đề xuất; đề xuất cấp quyền phần mềm gửi Tổng giám đốc và Phó tổng giám đốc phụ trách.
+
+## Văn bản Ban Tổng giám đốc trả lại
+Trước khi gọi AI, extension đọc cột bên trái trang chi tiết (Thông tin ý kiến, Lịch sử thao tác). Nếu có ý kiến hoặc thao tác (kể cả "Trả lại văn bản") đứng tên một thành viên BTGĐ trong danh sách Cài đặt, văn bản được đánh dấu **BTGĐ trả lại**, không đẩy và không bao giờ bị đẩy lại ở các lượt sau. Các văn bản này hiện trong popup và file Excel rà soát để xử lý thủ công.
 
 Văn bản AI không xác định được người nhận sẽ bị bỏ qua (trừ khi đặt người nhận mặc định trong Cài đặt) và hiện trong báo cáo cuối lượt.
 

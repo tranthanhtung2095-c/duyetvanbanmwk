@@ -31,7 +31,13 @@
   <input type="text" id="claudeModel">
 
   <h2>3. Chế độ chạy</h2>
-  <p class="hint">Extension chỉ chạy khi bấm "Bắt đầu đẩy" trong popup, và đẩy liên tục đến khi tab Chờ duyệt hết văn bản.</p>
+  <p class="hint">Mỗi lượt đẩy liên tục đến khi tab Chờ duyệt hết văn bản mới. Ngoài nút "Bắt đầu đẩy" trong popup, extension tự chạy định kỳ khi Chrome đang mở.</p>
+  <div class="inline" style="margin-top:8px">
+    <label for="autoMinutes" style="margin-left:0">Tự chạy mỗi</label>
+    <input type="number" id="autoMinutes" min="0" max="1440" style="width:70px">
+    <label for="autoMinutes">phút (0 = tắt tự chạy)</label>
+  </div>
+  <p class="hint">Mỗi lượt tự chạy mở một cửa sổ MEDworking, xong thì tự đóng và chỉ báo khi có văn bản mới được xử lý. Văn bản đã bỏ qua, đã đẩy, hoặc lỗi 3 lần không bị xử lý lại ở các lượt tự chạy; bấm "Bắt đầu đẩy" để thử lại. Văn bản Ban Tổng giám đốc đã trả lại không bao giờ được đẩy lại.</p>
   <div class="inline" style="margin-top:8px">
     <input type="checkbox" id="dryRun"><label for="dryRun">Chế độ chạy thử (chọn người nhận nhưng không bấm Đồng ý)</label>
   </div>

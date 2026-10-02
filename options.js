@@ -10,6 +10,7 @@ async function load() {
   $('claudeModel').value = s.claudeModel;
   $('dryRun').checked = s.dryRun;
   $('maxAgeMonths').value = s.maxAgeMonths;
+  $('autoMinutes').value = s.autoMinutes;
   $('members').value = s.members.map(m => `${m.id} | ${m.name}`).join('\n');
   $('fallbackIds').value = s.fallbackIds.join(', ');
   $('rules').value = s.rules;
@@ -25,6 +26,12 @@ function parseMembers(text) {
       return { id: id.trim(), name: rest.join('|').trim() };
     })
     .filter(m => m.id && m.name);
+}
+
+// 0 = tắt; bật thì tối thiểu 10 phút để không mở cửa sổ liên tục
+function autoMinutes(v) {
+  const n = parseInt(v, 10) || 0;
+  return n <= 0 ? 0 : Math.max(10, n);
 }
 
 $('save').onclick = async () => {
@@ -53,6 +60,7 @@ $('save').onclick = async () => {
       claudeModel: $('claudeModel').value.trim() || DEFAULTS.claudeModel,
       dryRun: $('dryRun').checked,
       maxAgeMonths: Math.max(0, parseInt($('maxAgeMonths').value, 10) || 0),
+      autoMinutes: autoMinutes($('autoMinutes').value),
       members,
       fallbackIds,
       rules: $('rules').value.trim() || DEFAULT_RULES,

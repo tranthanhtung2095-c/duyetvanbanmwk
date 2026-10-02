@@ -119,7 +119,8 @@
   // Lịch sử mọi văn bản đã xử lý (qua nhiều lượt chạy), để xuất Excel rà soát
   const HISTORY_MAX = 5000;
   async function logHistory(run, it) {
-    if (!['done', 'dry', 'skipped', 'error'].includes(it.status)) return;
+    if (!['done', 'dry', 'skipped', 'error', 'returned'].includes(it.status)) return;
+    await rememberHandled(it);
     try {
       const { history = [] } = await chrome.storage.local.get('history');
       history.push({
@@ -144,6 +145,56 @@
     } catch (e) {
       console.warn('[MED-pusher] không ghi được lịch sử', e);
     }
+  }
+
+  // Nhớ kết quả xử lý mỗi mã văn bản qua các lượt chạy ("handled"), để lượt tự chạy
+  // 30 phút/lần không xử lý lại văn bản đã bỏ qua/đã đẩy, và không bao giờ đụng
+  // văn bản Ban Tổng giám đốc đã trả lại.
+  const HANDLED_KEEP_MS = 365 * 24 * 3600 * 1000;
+  const MAX_ERRORS = 3;
+  async function rememberHandled(it) {
+    try {
+      const { handled = {} } = await chrome.storage.local.get('handled');
+      const h = handled[it.code] || {};
+      handled[it.code] = {
+        status: it.status,
+        at: Date.now(),
+        errors: (h.errors || 0) + (it.status === 'error' ? 1 : 0)
+      };
+      const now = Date.now();
+      for (const k of Object.keys(handled)) if (now - handled[k].at > HANDLED_KEEP_MS) delete handled[k];
+      await chrome.storage.local.set({ handled });
+    } catch (e) {
+      console.warn('[MED-pusher] không ghi được danh sách đã xử lý', e);
+    }
+  }
+
+  const HANDLED_LABEL = { done: 'đã đẩy', dry: 'chạy thử', skipped: 'bỏ qua', error: 'lỗi', returned: 'BTGĐ trả lại' };
+
+  // Văn bản đã xử lý ở lượt trước: đánh dấu "prev" để không xử lý lại.
+  // - BTGĐ trả lại: luôn bỏ qua.
+  // - Lượt tự chạy: bỏ qua cả văn bản đã đẩy/bỏ qua, văn bản lỗi đủ MAX_ERRORS lần,
+  //   văn bản đã chạy thử (khi vẫn ở chế độ chạy thử).
+  // - Lượt bấm tay: thử lại mọi văn bản trừ văn bản BTGĐ trả lại.
+  async function markHandled(rows, run) {
+    const { handled = {} } = await chrome.storage.local.get('handled');
+    const auto = run.trigger === 'auto';
+    for (const r of rows) {
+      const h = handled[r.code];
+      if (!h || r.status !== 'pending') continue;
+      const skip =
+        h.status === 'returned' ||
+        (auto &&
+          (h.status === 'done' ||
+            h.status === 'skipped' ||
+            (h.status === 'dry' && run.dry) ||
+            (h.status === 'error' && (h.errors || 0) >= MAX_ERRORS)));
+      if (skip) {
+        r.status = 'prev';
+        r.reason = `Đã xử lý ở lượt trước (${HANDLED_LABEL[h.status] || h.status}), không xử lý lại.`;
+      }
+    }
+    return rows;
   }
 
   // ---------- Giới hạn thời gian văn bản ----------
@@ -196,6 +247,7 @@
   }
   const isList = () => !!listTable();
   const isDetail = () => !!findButton('Duyệt văn bản');
+  const isLogin = () => [...document.querySelectorAll('input[type=password]')].some(visible);
 
   function readRows() {
     const t = listTable();
@@ -434,7 +486,7 @@
   async function handleList(run) {
     // Lượt đầu: quét danh sách
     if (!run.items) {
-      const items = markAge(await scanAll(Number(run.maxAgeMonths) || 0), run);
+      const items = await markHandled(markAge(await scanAll(Number(run.maxAgeMonths) || 0), run), run);
       const fresh = await getRun();
       if (!fresh || !fresh.active) return;
       fresh.items = items;
@@ -479,7 +531,7 @@
       // Đã xử lý hết danh sách đã quét: quét lại tab Chờ duyệt, vì văn bản đã đẩy rời đi
       // thì văn bản ở các trang sau dồn lên. Chỉ thêm văn bản chưa từng xử lý (văn bản bị
       // bỏ qua/lỗi vẫn nằm lại trong Chờ duyệt, không xử lý lại). Hết văn bản mới thì dừng.
-      const rows = markAge(await scanAll(Number(run.maxAgeMonths) || 0), run);
+      const rows = await markHandled(markAge(await scanAll(Number(run.maxAgeMonths) || 0), run), run);
       const fresh = await getRun();
       if (!fresh || !fresh.active) return;
       const seen = new Set(fresh.items.map(x => x.code));
@@ -545,6 +597,46 @@
     }
     text = text.replace(/[ \t]+/g, ' ').replace(/\n{2,}/g, '\n').slice(0, 14000);
     return { code: it.code, title: it.title, unit: it.unit, proposer: it.proposer, group: it.group, text };
+  }
+
+  // ---------- Văn bản Ban Tổng giám đốc đã trả lại ----------
+
+  // Cột bên trái trang chi tiết ("Thông tin ý kiến", "Lịch sử thao tác"): đi từ mỗi tiêu đề
+  // lên thẻ cha lớn nhất chưa chứa tab "Nội dung văn bản" bên phải.
+  function leftPanels() {
+    const leaves = [...document.querySelectorAll('body *')].filter(e => !e.children.length);
+    const tab = leaves.find(e => fold(e.textContent) === 'noi dung van ban');
+    const heads = leaves.filter(e => {
+      const t = fold(e.textContent);
+      return t === 'thong tin y kien' || t === 'lich su thao tac';
+    });
+    const panels = heads.map(h => {
+      let el = h;
+      while (el.parentElement && el.parentElement !== document.body) {
+        const p = el.parentElement;
+        if (tab ? p.contains(tab) : fold(p.textContent).includes('noi dung van ban')) break;
+        el = p;
+      }
+      return el;
+    });
+    return [...new Set(panels)];
+  }
+
+  // Thành viên BTGĐ đứng tên một ý kiến hoặc một thao tác (kể cả "Trả lại văn bản") ở cột
+  // bên trái: văn bản đã lên BTGĐ và bị trả về, tạm thời không đẩy lại.
+  function returnedBy(panel, members) {
+    const names = members.map(m => ({ m, n: fold(m.name) })).filter(x => x.n);
+    for (const e of panel.querySelectorAll('*')) {
+      if (e.children.length) continue;
+      const t = fold(e.textContent);
+      if (!t) continue;
+      const hit = names.find(x => t.includes(x.n) && t.length <= x.n.length + 20);
+      if (hit) {
+        const row = e.closest('tr, li') || (e.parentElement && e.parentElement.parentElement) || e;
+        return { member: hit.m, context: norm(row.innerText || row.textContent).slice(0, 200) };
+      }
+    }
+    return null;
   }
 
   // Nhận diện hộp thoại "Duyệt văn bản". So khớp không dấu vì trang ghi sai chính tả
@@ -798,6 +890,24 @@
     try {
       const here = await waitFor(() => document.body.innerText.includes(it.code), 12000);
       if (!here) throw new Error('Trang chi tiết không khớp mã văn bản.');
+
+      const found = await waitFor(() => leftPanels().length, 10000);
+      if (!found) {
+        throw new Error('Không đọc được phần Thông tin ý kiến / Lịch sử thao tác, không đẩy để tránh đẩy lại văn bản BTGĐ đã trả lại.');
+      }
+      await sleep(1500); // chờ lịch sử thao tác tải xong
+      const s = await getSettings();
+      const ret = leftPanels()
+        .map(p => returnedBy(p, s.members))
+        .find(Boolean);
+      if (ret) {
+        await endItem(i, {
+          status: 'returned',
+          reason: `Có ý kiến/thao tác của ${ret.member.name} (BTGĐ), không đẩy: ${ret.context}`
+        });
+        await goBack(run);
+        return;
+      }
       await patchItem(i, { phase: 'classifying' });
 
       const doc = await extractDoc(it);
@@ -848,6 +958,13 @@
           if (myTabId != null && myTabId === run.tabId) {
             if (isDetail()) await handleDetail(run);
             else if (isList()) await handleList(run);
+            else if (isLogin() && Date.now() - run.updatedAt > 20000) {
+              await send({
+                type: 'FINISH',
+                note: 'MEDworking đang ở trang đăng nhập: đăng nhập lại trong Chrome, lượt sau sẽ tự chạy.',
+                alert: true
+              });
+            }
           }
         }
       } catch (e) {
