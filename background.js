@@ -54,6 +54,17 @@ chrome.runtime.onInstalled.addListener(async () => {
     await chrome.scripting.unregisterContentScripts({ ids: ['med-cs'] });
   } catch (e) {}
   await chrome.storage.local.remove('lastRunDate');
+  // Tải lại/cập nhật extension giữa một lượt chạy: script trong tab đang chạy đã mất kết nối
+  // và tự dừng, nên kết thúc lượt đó để không bị kẹt "Đang chạy" (bấm Bắt đầu đẩy để chạy tiếp).
+  const run = await getRun();
+  if (run && run.active) {
+    run.active = false;
+    run.stopped = true;
+    run.finishedAt = Date.now();
+    run.note = 'Extension được tải lại/cập nhật giữa lượt chạy nên lượt này đã dừng.';
+    await chrome.storage.local.set({ run });
+    if (run.trigger === 'auto') await closeWindow(run.windowId);
+  }
   await getSettings(); // cập nhật quy luật phân công mới cho cài đặt đã lưu
   await scheduleAuto();
 });

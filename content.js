@@ -969,9 +969,14 @@
 
   // ---------- Vòng lặp chính ----------
 
+  // Extension vừa được tải lại/cập nhật: script cũ còn sót trong tab mất kết nối với extension,
+  // mọi lệnh chrome.* báo "Extension context invalidated". Khi đó dừng hẳn vòng lặp cũ.
+  const orphaned = e => !(chrome.runtime && chrome.runtime.id) || /context invalidated/i.test(String((e && e.message) || e || ''));
+
   let myTabId = null;
   (async function loop() {
     while (true) {
+      if (orphaned()) return;
       try {
         const run = await getRun();
         if (run && run.active && Date.now() - run.startedAt < 12 * 3600 * 1000) {
@@ -992,6 +997,7 @@
           }
         }
       } catch (e) {
+        if (orphaned(e)) return;
         console.error('[MED-pusher]', e);
       }
       await sleep(1500);
