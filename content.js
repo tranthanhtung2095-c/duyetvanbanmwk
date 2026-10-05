@@ -152,12 +152,16 @@
   // văn bản Ban Tổng giám đốc đã trả lại.
   const HANDLED_KEEP_MS = 365 * 24 * 3600 * 1000;
   const MAX_ERRORS = 3;
+  // 2: "returned" chỉ còn là văn bản BTGĐ không đồng ý/trả lại/yêu cầu bổ sung (bản 0.4.0
+  // đánh dấu cả văn bản BTGĐ chỉ đồng ý), nên mục "returned" cũ phải được xét lại
+  const HANDLED_VERSION = 2;
   async function rememberHandled(it) {
     try {
       const { handled = {} } = await chrome.storage.local.get('handled');
       const h = handled[it.code] || {};
       handled[it.code] = {
         status: it.status,
+        v: HANDLED_VERSION,
         at: Date.now(),
         errors: (h.errors || 0) + (it.status === 'error' ? 1 : 0)
       };
@@ -183,7 +187,7 @@
       const h = handled[r.code];
       if (!h || r.status !== 'pending') continue;
       const skip =
-        h.status === 'returned' ||
+        (h.status === 'returned' && h.v >= HANDLED_VERSION) ||
         (auto &&
           (h.status === 'done' ||
             h.status === 'skipped' ||
@@ -622,21 +626,32 @@
     return [...new Set(panels)];
   }
 
-  // Thành viên BTGĐ đứng tên một ý kiến hoặc một thao tác (kể cả "Trả lại văn bản") ở cột
-  // bên trái: văn bản đã lên BTGĐ và bị trả về, tạm thời không đẩy lại.
-  function returnedBy(panel, members) {
+  // Ý kiến / thao tác đứng tên thành viên BTGĐ ở cột bên trái. Mỗi mục (một dòng ý kiến
+  // hoặc một dòng lịch sử) là thẻ cha nhỏ nhất chứa mốc thời gian "hh:mm dd/mm/yyyy", nên
+  // không lẫn tiêu đề mục ("3. Ý kiến bổ sung") hay ý kiến của người khác.
+  // Mục có từ khóa giữ lại (không đồng ý, trả lại, bổ sung...) → hold: giữ văn bản, không đẩy.
+  // Mục bình thường (đồng ý, đã xem...) → văn bản vẫn đẩy nhưng không gửi lại người đó.
+  const STAMP = /\d{1,2}:\d{2}(:\d{2})?\s+\d{1,2}\/\d{1,2}\/\d{4}/;
+  function btgdEntries(panel, members, keywords) {
     const names = members.map(m => ({ m, n: fold(m.name) })).filter(x => x.n);
+    const keys = keywords.map(k => ({ k, f: fold(k) })).filter(x => x.f);
+    const out = [];
     for (const e of panel.querySelectorAll('*')) {
       if (e.children.length) continue;
       const t = fold(e.textContent);
       if (!t) continue;
       const hit = names.find(x => t.includes(x.n) && t.length <= x.n.length + 20);
-      if (hit) {
-        const row = e.closest('tr, li') || (e.parentElement && e.parentElement.parentElement) || e;
-        return { member: hit.m, context: norm(row.innerText || row.textContent).slice(0, 200) };
-      }
+      if (!hit) continue;
+      let row = e;
+      while (row !== panel && row.parentElement && !STAMP.test(row.textContent)) row = row.parentElement;
+      if (row === panel) row = e.closest('tr, li') || e.parentElement || e;
+      const text = norm(row.innerText || row.textContent).slice(0, 300);
+      // "Ý kiến bổ sung" là tên mục/thao tác thêm ý kiến, không phải yêu cầu bổ sung
+      const body = fold(text).replace(hit.n, ' ').replace(/y kien bo sung/g, ' ');
+      const key = keys.find(x => body.includes(x.f));
+      out.push({ member: hit.m, text, hold: !!key, key: key && key.k });
     }
-    return null;
+    return out;
   }
 
   // Nhận diện hộp thoại "Duyệt văn bản". So khớp không dấu vì trang ghi sai chính tả
@@ -897,17 +912,18 @@
       }
       await sleep(1500); // chờ lịch sử thao tác tải xong
       const s = await getSettings();
-      const ret = leftPanels()
-        .map(p => returnedBy(p, s.members))
-        .find(Boolean);
-      if (ret) {
+      const entries = leftPanels().flatMap(p => btgdEntries(p, s.members, s.holdKeywords));
+      const hold = entries.find(x => x.hold);
+      if (hold) {
         await endItem(i, {
           status: 'returned',
-          reason: `Có ý kiến/thao tác của ${ret.member.name} (BTGĐ), không đẩy: ${ret.context}`
+          reason: `${hold.member.name} (BTGĐ) có ý kiến "${hold.key}", giữ lại không đẩy: ${hold.text}`
         });
         await goBack(run);
         return;
       }
+      // BTGĐ đã cho ý kiến bình thường: không gửi lại những người này
+      const commented = new Map(entries.map(x => [String(x.member.id), x.member.name]));
       await patchItem(i, { phase: 'classifying' });
 
       const doc = await extractDoc(it);
@@ -915,8 +931,16 @@
       const res = await send({ type: 'CLASSIFY', doc });
       if (res.error) throw new Error('AI: ' + res.error);
 
+      const removed = (res.recipients || []).filter(id => commented.has(String(id)));
+      if (removed.length) {
+        res.recipients = res.recipients.filter(id => !commented.has(String(id)));
+        res.reason = `${res.reason || ''} [Không gửi lại ${removed.map(id => commented.get(String(id))).join(', ')}: đã cho ý kiến.]`.trim();
+      }
       if (!res.recipients || !res.recipients.length) {
-        await endItem(i, { status: 'skipped', reason: res.reason || 'AI không xác định được người nhận.' });
+        await endItem(i, {
+          status: 'skipped',
+          reason: removed.length ? res.reason : res.reason || 'AI không xác định được người nhận.'
+        });
         await goBack(run);
         return;
       }

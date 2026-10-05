@@ -13,6 +13,7 @@ async function load() {
   $('autoMinutes').value = s.autoMinutes;
   $('members').value = s.members.map(m => `${m.id} | ${m.name}`).join('\n');
   $('fallbackIds').value = s.fallbackIds.join(', ');
+  $('holdKeywords').value = s.holdKeywords.join('\n');
   $('rules').value = s.rules;
 }
 
@@ -63,6 +64,10 @@ $('save').onclick = async () => {
       autoMinutes: autoMinutes($('autoMinutes').value),
       members,
       fallbackIds,
+      holdKeywords: (() => {
+        const k = $('holdKeywords').value.split('\n').map(x => x.trim()).filter(Boolean);
+        return k.length ? k : DEFAULTS.holdKeywords;
+      })(),
       rules: $('rules').value.trim() || DEFAULT_RULES,
       rulesVersion: RULES_VERSION
     };

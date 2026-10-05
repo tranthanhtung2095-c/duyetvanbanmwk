@@ -212,7 +212,7 @@ async function finishRun(note, alert) {
   const items = all.filter(i => !HIDDEN_STATUS.includes(i.status));
   const c = st => all.filter(i => i.status === st).length;
   const old = c('old') ? ` Không đẩy ${c('old')} văn bản quá ${run.maxAgeMonths} tháng.` : '';
-  const ret = c('returned') ? ` ${c('returned')} văn bản BTGĐ đã trả lại, không đẩy.` : '';
+  const ret = c('returned') ? ` ${c('returned')} văn bản BTGĐ không đồng ý/trả lại/yêu cầu bổ sung, không đẩy.` : '';
   const msg = run.dry
     ? `Chạy thử xong: ${c('dry')} văn bản chọn được người nhận, ${c('skipped')} bỏ qua, ${c('error')} lỗi.${ret}${old}`
     : `Đã đẩy ${c('done')}/${items.length} văn bản. Bỏ qua ${c('skipped')}, lỗi ${c('error')}.${ret}${old}`;

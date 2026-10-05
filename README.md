@@ -27,8 +27,10 @@ Mỗi văn bản trong tab Chờ duyệt: đọc nội dung, AI chọn thành vi
 
 Quy luật phân công (Cài đặt, mục 4): đề xuất nhân sự gửi thành viên BTGĐ phụ trách bộ phận của CBNV được đề xuất; đề xuất cấp quyền phần mềm gửi Tổng giám đốc và Phó tổng giám đốc phụ trách.
 
-## Văn bản Ban Tổng giám đốc trả lại
-Trước khi gọi AI, extension đọc cột bên trái trang chi tiết (Thông tin ý kiến, Lịch sử thao tác). Nếu có ý kiến hoặc thao tác (kể cả "Trả lại văn bản") đứng tên một thành viên BTGĐ trong danh sách Cài đặt, văn bản được đánh dấu **BTGĐ trả lại**, không đẩy và không bao giờ bị đẩy lại ở các lượt sau. Các văn bản này hiện trong popup và file Excel rà soát để xử lý thủ công.
+## Văn bản Ban Tổng giám đốc đã có ý kiến
+Trước khi gọi AI, extension đọc cột bên trái trang chi tiết (Thông tin ý kiến, Lịch sử thao tác) và tìm các ý kiến/thao tác đứng tên thành viên BTGĐ trong danh sách Cài đặt:
+- Ý kiến có từ khóa giữ lại (mặc định: không đồng ý, chưa đồng ý, từ chối, không duyệt, chưa duyệt, trả lại, trả về, bổ sung, làm rõ, giải trình; sửa trong Cài đặt, mục 4): văn bản được đánh dấu **BTGĐ giữ lại**, không đẩy và không bị đẩy lại ở các lượt sau. Hiện trong popup và file Excel rà soát để xử lý thủ công. Tên mục "Ý kiến bổ sung" không tính là yêu cầu bổ sung.
+- Ý kiến bình thường (đồng ý, đã xem...): văn bản vẫn đẩy bình thường nhưng bỏ người đã cho ý kiến khỏi danh sách người nhận. Nếu AI chỉ chọn đúng những người đã cho ý kiến thì văn bản bị bỏ qua.
 
 Văn bản AI không xác định được người nhận sẽ bị bỏ qua (trừ khi đặt người nhận mặc định trong Cài đặt) và hiện trong báo cáo cuối lượt.
 

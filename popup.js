@@ -7,7 +7,7 @@ const LABEL = {
   error: 'Lỗi',
   dry: 'Thử OK',
   old: 'Quá hạn',
-  returned: 'BTGĐ trả lại',
+  returned: 'BTGĐ giữ lại',
   prev: 'Đã xử lý trước'
 };
 
@@ -52,7 +52,7 @@ async function render() {
   if (run.active) {
     line = `Đang chạy (${run.trigger === 'auto' ? 'tự chạy, ' : ''}bắt đầu ${when}${run.dry ? ', chế độ chạy thử' : ''}): ${items.length - c('pending')}/${items.length || '?'} văn bản.`;
   } else {
-    line = `Lượt ${run.trigger === 'auto' ? 'tự chạy' : 'chạy'} ${when}${run.stopped ? ' (đã dừng)' : ''}: đã đẩy ${c('done')}, thử ${c('dry')}, BTGĐ trả lại ${c('returned')}, bỏ qua ${c('skipped')}, lỗi ${c('error')}, còn lại ${c('pending')}.`;
+    line = `Lượt ${run.trigger === 'auto' ? 'tự chạy' : 'chạy'} ${when}${run.stopped ? ' (đã dừng)' : ''}: đã đẩy ${c('done')}, thử ${c('dry')}, BTGĐ giữ lại ${c('returned')}, bỏ qua ${c('skipped')}, lỗi ${c('error')}, còn lại ${c('pending')}.`;
     if (run.note) line += ' ' + run.note;
   }
   if (c('old')) line += ` Không đẩy ${c('old')} văn bản quá ${run.maxAgeMonths} tháng.`;
@@ -94,7 +94,7 @@ const RESULT_LABEL = {
   dry: 'Chạy thử (chưa đẩy)',
   skipped: 'Bỏ qua',
   error: 'Lỗi',
-  returned: 'BTGĐ trả lại (không đẩy)'
+  returned: 'BTGĐ không đồng ý/trả lại/bổ sung (không đẩy)'
 };
 
 function fmtTime(t) {

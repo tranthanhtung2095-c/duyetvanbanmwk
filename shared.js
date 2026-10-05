@@ -85,6 +85,8 @@ const DEFAULTS = {
   dryRun: false,
   maxAgeMonths: 6, // chỉ đẩy văn bản tạo trong số tháng gần đây
   autoMinutes: 30, // tự chạy mỗi bao nhiêu phút (0 = tắt)
+  // ý kiến/thao tác của BTGĐ có các từ này thì giữ văn bản lại, không đẩy
+  holdKeywords: ['không đồng ý', 'chưa đồng ý', 'từ chối', 'không duyệt', 'chưa duyệt', 'trả lại', 'trả về', 'bổ sung', 'làm rõ', 'giải trình'],
   fallbackIds: [],
   members: DEFAULT_MEMBERS,
   rules: DEFAULT_RULES
