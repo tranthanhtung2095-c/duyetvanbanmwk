@@ -315,7 +315,14 @@ async function callDeepSeek(s, system, user) {
       max_tokens: 500
     })
   });
-  return data.choices?.[0]?.message?.content || '';
+  // DeepSeek tự cache phần đầu giống nhau giữa các lần gọi: prompt_cache_hit_tokens tính giá rẻ hơn
+  const u = data.usage || {};
+  const hit = u.prompt_cache_hit_tokens || 0;
+  const miss = u.prompt_cache_miss_tokens != null ? u.prompt_cache_miss_tokens : Math.max(0, (u.prompt_tokens || 0) - hit);
+  return {
+    text: data.choices?.[0]?.message?.content || '',
+    usage: { provider: 'deepseek', model: data.model || '', uncached: miss, cacheRead: hit, cacheWrite: 0, output: u.completion_tokens || 0 }
+  };
 }
 
 async function callClaude(s, system, user) {
@@ -337,14 +344,25 @@ async function callClaude(s, system, user) {
       messages: [{ role: 'user', content: user }]
     })
   });
-  return (data.content || []).map(b => b.text || '').join('');
+  const u = data.usage || {};
+  return {
+    text: (data.content || []).map(b => b.text || '').join(''),
+    usage: {
+      provider: 'claude',
+      model: data.model || '',
+      uncached: u.input_tokens || 0,
+      cacheRead: u.cache_read_input_tokens || 0,
+      cacheWrite: u.cache_creation_input_tokens || 0,
+      output: u.output_tokens || 0
+    }
+  };
 }
 
 async function classify(doc) {
   const s = await getSettings();
   const system = buildSystem(s);
   const user = buildUser(doc);
-  const text = s.provider === 'claude'
+  const { text, usage } = s.provider === 'claude'
     ? await callClaude(s, system, user)
     : await callDeepSeek(s, system, user);
 
@@ -370,7 +388,8 @@ async function classify(doc) {
     reason: String(parsed.reason || '').slice(0, 300),
     confident: parsed.confident !== false,
     usedFallback,
-    noBtgd
+    noBtgd,
+    usage
   };
 }
 

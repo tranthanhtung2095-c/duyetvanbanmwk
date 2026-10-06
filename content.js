@@ -139,7 +139,8 @@
         confident: it.confident,
         usedFallback: !!it.usedFallback,
         error: it.error || it.note || '',
-        excerpt: it.excerpt || ''
+        excerpt: it.excerpt || '',
+        usage: it.usage || null
       });
       await chrome.storage.local.set({ history: history.slice(-HISTORY_MAX) });
     } catch (e) {
@@ -930,6 +931,7 @@
       await patchItem(i, { excerpt: doc.text.slice(0, 800) });
       const res = await send({ type: 'CLASSIFY', doc });
       if (res.error) throw new Error('AI: ' + res.error);
+      if (res.usage) await patchItem(i, { usage: res.usage }); // số token để theo dõi chi phí AI
 
       const removed = (res.recipients || []).filter(id => commented.has(String(id)));
       if (removed.length) {

@@ -30,6 +30,20 @@
   <label for="claudeModel">Model Claude</label>
   <input type="text" id="claudeModel">
 
+  <label>Giá AI để ước tính chi phí (USD / 1 triệu token)</label>
+  <div class="inline">
+    DeepSeek: <label for="pDsMiss">đầu vào không cache</label> <input type="number" step="any" min="0" id="pDsMiss" style="width:80px">
+    <label for="pDsHit">đầu vào trúng cache</label> <input type="number" step="any" min="0" id="pDsHit" style="width:80px">
+    <label for="pDsOut">đầu ra</label> <input type="number" step="any" min="0" id="pDsOut" style="width:80px">
+  </div>
+  <div class="inline" style="margin-top:6px">
+    Claude: <label for="pClIn">đầu vào</label> <input type="number" step="any" min="0" id="pClIn" style="width:80px">
+    <label for="pClWrite">ghi cache</label> <input type="number" step="any" min="0" id="pClWrite" style="width:80px">
+    <label for="pClRead">đọc cache</label> <input type="number" step="any" min="0" id="pClRead" style="width:80px">
+    <label for="pClOut">đầu ra</label> <input type="number" step="any" min="0" id="pClOut" style="width:80px">
+  </div>
+  <p class="hint">Số token lấy đúng từ API sau mỗi lần gọi; tiền = token × giá ở đây. Lấy giá DeepSeek ở trang giá của DeepSeek (api-docs.deepseek.com, mục Models &amp; Pricing) - để 0 thì chỉ hiện số token. Giá Claude mặc định là của Claude Haiku 4.5; dùng model khác thì sửa lại.</p>
+
   <h2>3. Chế độ chạy</h2>
   <p class="hint">Mỗi lượt đẩy liên tục đến khi tab Chờ duyệt hết văn bản mới. Ngoài nút "Bắt đầu đẩy" trong popup, extension tự chạy định kỳ khi Chrome đang mở.</p>
   <div class="inline" style="margin-top:8px">

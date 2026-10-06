@@ -55,6 +55,12 @@ const DEFAULTS = {
   dryRun: false,
   maxAgeMonths: 6, // chỉ đẩy văn bản tạo trong số tháng gần đây
   autoMinutes: 30, // tự chạy mỗi bao nhiêu phút (0 = tắt)
+  // Giá AI, USD / 1 triệu token, để ước tính chi phí từ số token API trả về (0 = chưa nhập).
+  // Claude mặc định theo giá Claude Haiku 4.5: đầu vào 1, ghi cache 1,25, đọc cache 0,1, đầu ra 5.
+  prices: {
+    deepseek: { miss: 0, hit: 0, out: 0 },
+    claude: { in: 1, write: 1.25, read: 0.1, out: 5 }
+  },
   // ý kiến/thao tác của BTGĐ có các từ này thì giữ văn bản lại, không đẩy
   holdKeywords: ['không đồng ý', 'chưa đồng ý', 'từ chối', 'không duyệt', 'chưa duyệt', 'trả lại', 'trả về', 'bổ sung', 'làm rõ', 'giải trình'],
   fallbackIds: [],
@@ -64,6 +70,37 @@ const DEFAULTS = {
 
 // Trạng thái không hiện từng dòng trong popup/thông báo: quá hạn tháng, đã xử lý ở lượt trước
 const HIDDEN_STATUS = ['old', 'prev'];
+
+// usage: { provider, uncached, cacheRead, cacheWrite, output } (số token của một lần gọi AI)
+// Trả về chi phí USD theo giá trong Cài đặt, hoặc null nếu chưa nhập giá của nhà cung cấp đó.
+function usageCost(u, prices) {
+  if (!u) return null;
+  if (u.provider === 'claude') {
+    const p = (prices && prices.claude) || {};
+    if (!(p.in || p.read || p.out)) return null;
+    return ((u.uncached || 0) * (p.in || 0) + (u.cacheWrite || 0) * (p.write || 0) +
+      (u.cacheRead || 0) * (p.read || 0) + (u.output || 0) * (p.out || 0)) / 1e6;
+  }
+  const p = (prices && prices.deepseek) || {};
+  if (!(p.miss || p.hit || p.out)) return null;
+  return ((u.uncached || 0) * (p.miss || 0) + (u.cacheRead || 0) * (p.hit || 0) + (u.output || 0) * (p.out || 0)) / 1e6;
+}
+
+// Cộng dồn usage của nhiều lần gọi AI
+function sumUsage(list, prices) {
+  const t = { calls: 0, uncached: 0, cacheRead: 0, cacheWrite: 0, output: 0, cost: 0, priced: 0 };
+  for (const u of list) {
+    if (!u) continue;
+    t.calls++;
+    for (const k of ['uncached', 'cacheRead', 'cacheWrite', 'output']) t[k] += u[k] || 0;
+    const c = usageCost(u, prices);
+    if (c != null) {
+      t.cost += c;
+      t.priced++;
+    }
+  }
+  return t;
+}
 
 async function getSettings() {
   const { settings } = await chrome.storage.local.get('settings');

@@ -33,6 +33,8 @@ Người nhận được xác định theo **Ma trận thẩm quyền (Authority
 
 Người nhận là mọi thành viên BTGĐ có vai trò Duyệt hoặc Phê chuẩn ở dòng ma trận khớp với văn bản; "BTGĐ khối" là người phụ trách khối của đơn vị đề xuất (đề xuất nhân sự: khối nơi CBNV làm việc). Văn bản mà ma trận cho phê chuẩn ở cấp dưới (ví dụ HĐ thử việc cấp nhân viên do Trưởng Ban TCCB ký theo uỷ quyền) được **bỏ qua** với lý do "Không cần trình BTGĐ theo ma trận thẩm quyền", để xử lý thủ công; không dùng người nhận mặc định cho các văn bản này.
 
+**Theo dõi chi phí AI**: sau mỗi lần gọi, extension ghi số token API trả về (đầu vào không cache, đọc cache, ghi cache, đầu ra). Popup hiện tổng của lượt chạy và của cả lịch sử; file Excel rà soát có cột token và chi phí ước tính từng văn bản. Tiền = token × giá nhập trong Cài đặt, mục 2 (USD / 1 triệu token; giá DeepSeek để 0 thì chỉ hiện token). Số liệu chính xác nhất vẫn là trang Usage trên platform.deepseek.com.
+
 **Cập nhật ma trận** khi có file Excel mới (cần Python): `pip install openpyxl` rồi `python3 tools/build_matrix.py "<đường dẫn file .xlsx>"`. Lệnh ghi lại `authority-matrix.js`; tải lại extension để áp dụng.
 
 **Chi phí AI**: ma trận làm mỗi lần gọi AI dài thêm khoảng vài chục nghìn token. Với Claude, phần này được cache (prompt caching) nên các văn bản sau trong cùng lượt chạy chỉ tính giá đọc cache; DeepSeek tự cache phần đầu giống nhau.
