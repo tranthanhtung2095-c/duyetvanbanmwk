@@ -221,10 +221,19 @@
     if (m) return new Date(+m[3], +m[2] - 1, +m[1]);
     return null;
   }
-  function cutoffDate(months) {
+  // Khoảng lọc: từ (ngày mai - số tháng) đến ngày mai, ví dụ hôm nay 06/10/2026, 6 tháng
+  // → 07/04/2026 - 07/10/2026. Ngày không có ở tháng đích thì lấy ngày cuối tháng (31/08 → 28/02).
+  function rangeEnd() {
     const d = new Date();
-    d.setMonth(d.getMonth() - months);
     d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + 1);
+    return d;
+  }
+  function cutoffDate(months) {
+    const end = rangeEnd();
+    const d = new Date(end.getFullYear(), end.getMonth() - months, 1);
+    const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    d.setDate(Math.min(end.getDate(), lastDay));
     return d;
   }
   // Văn bản cũ hơn giới hạn: đánh dấu "old" để không đẩy (vẫn giữ trong danh sách để không quét lại)
@@ -434,7 +443,7 @@
     }
     if (months > 0) {
       const from = fmtDMY(cutoffDate(months));
-      const to = fmtDMY(new Date());
+      const to = fmtDMY(rangeEnd());
       let ok = await setCreatedRange(from, to);
       if (!ok) ok = await setCreatedRange(from, to); // thử lại một lần
       if (!ok) console.warn('[MED-pusher] không đặt được ô Ngày tạo, chỉ lọc theo mã/ngày trong bảng');

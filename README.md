@@ -15,7 +15,7 @@
 - Bấm biểu tượng extension, chọn **Bắt đầu đẩy** để chạy ngay.
 - Extension đẩy liên tục: xử lý xong danh sách thì quét lại tab Chờ duyệt, còn văn bản mới thì đẩy tiếp, đến khi không còn văn bản nào mới thì dừng và báo kết quả. Văn bản bị bỏ qua hoặc lỗi nằm lại trong Chờ duyệt để xử lý thủ công, không bị thử lại vô hạn.
 - Bấm **Dừng** để dừng giữa chừng.
-- Chỉ đẩy văn bản tạo trong 6 tháng gần đây (đổi số tháng trong Cài đặt, mục 3). Trước khi quét, extension điền ô "Ngày tạo" trên trang (từ ngày cách đây 6 tháng đến hôm nay) rồi bấm Tìm kiếm. Ngày lấy từ mã văn bản (VB24092026-… là 24/09/2026), không có thì lấy cột Ngày tạo.
+- Chỉ đẩy văn bản tạo trong 6 tháng gần đây (đổi số tháng trong Cài đặt, mục 3). Trước khi quét, extension điền ô "Ngày tạo" trên trang từ (ngày mai - 6 tháng) đến ngày mai, ví dụ hôm nay 06/10/2026 thì lọc 07/04/2026 - 07/10/2026, rồi bấm Tìm kiếm. Ngày lấy từ mã văn bản (VB24092026-… là 24/09/2026), không có thì lấy cột Ngày tạo.
 
 ## Rà soát kết quả
 Mọi văn bản đã xử lý (đã đẩy, chạy thử, bỏ qua, lỗi) được lưu vào lịch sử qua các lượt chạy. Trong popup bấm **Xuất Excel rà soát** để tải file .xlsx gồm:
