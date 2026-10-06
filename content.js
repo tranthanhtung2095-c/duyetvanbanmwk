@@ -139,8 +139,7 @@
         confident: it.confident,
         usedFallback: !!it.usedFallback,
         error: it.error || it.note || '',
-        excerpt: it.excerpt || '',
-        usage: it.usage || null
+        excerpt: it.excerpt || ''
       });
       await chrome.storage.local.set({ history: history.slice(-HISTORY_MAX) });
     } catch (e) {
@@ -931,7 +930,6 @@
       await patchItem(i, { excerpt: doc.text.slice(0, 800) });
       const res = await send({ type: 'CLASSIFY', doc });
       if (res.error) throw new Error('AI: ' + res.error);
-      if (res.usage) await patchItem(i, { usage: res.usage }); // số token để theo dõi chi phí AI
 
       const removed = (res.recipients || []).filter(id => commented.has(String(id)));
       if (removed.length) {
@@ -941,11 +939,7 @@
       if (!res.recipients || !res.recipients.length) {
         await endItem(i, {
           status: 'skipped',
-          reason: res.noBtgd
-            ? 'Không cần trình BTGĐ theo ma trận thẩm quyền: ' + (res.reason || '')
-            : removed.length
-              ? res.reason
-              : res.reason || 'AI không xác định được người nhận.'
+          reason: removed.length ? res.reason : res.reason || 'AI không xác định được người nhận.'
         });
         await goBack(run);
         return;

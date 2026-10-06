@@ -1,4 +1,4 @@
-importScripts('shared.js', 'authority-matrix.js');
+importScripts('shared.js');
 
 const STALE_MS = 10 * 60 * 1000;
 
@@ -66,6 +66,16 @@ chrome.runtime.onInstalled.addListener(async () => {
     if (run.trigger === 'auto') await closeWindow(run.windowId);
   }
   await getSettings(); // cập nhật quy luật phân công mới cho cài đặt đã lưu
+  // Bản 0.5.x có thể đã đánh dấu nhiều văn bản là "bỏ qua" (không cần trình BTGĐ theo ma trận)
+  // hoặc lỗi: xoá các mục này khỏi bộ nhớ "đã xử lý" một lần để lượt tự chạy xét lại.
+  const { handledResetV043 } = await chrome.storage.local.get('handledResetV043');
+  if (!handledResetV043) {
+    const { handled = {} } = await chrome.storage.local.get('handled');
+    for (const k of Object.keys(handled)) {
+      if (handled[k].status === 'skipped' || handled[k].status === 'error') delete handled[k];
+    }
+    await chrome.storage.local.set({ handled, handledResetV043: true });
+  }
   await scheduleAuto();
 });
 
@@ -248,19 +258,10 @@ function buildSystem(s) {
     'Quy luật phân công:',
     s.rules,
     '',
-    `MA TRẬN THẨM QUYỀN (Authority Matrix) toàn Tập đoàn - nguồn: ${AUTHORITY_MATRIX_SOURCE}.`,
-    'Mỗi hạng mục: "- [số] Hạng mục (loại văn bản)", mỗi dòng con: "· phạm vi áp dụng → vai trò ở cột BTGĐ; TGĐ; HĐQT" hoặc "→ KHÔNG trình BTGĐ (cấp phê chuẩn)" hoặc "→ CHƯA RÕ cấp phê chuẩn".',
-    AUTHORITY_MATRIX,
-    '',
-    'TỪ VIẾT TẮT dùng trong Tập đoàn:',
-    ABBREVIATIONS,
-    '',
     'Yêu cầu:',
     '- Chọn tất cả thành viên liên quan, không chọn người không liên quan.',
-    '- Văn bản không cần trình BTGĐ theo ma trận (mục B3 của quy luật): recipients rỗng, "noBtgd": true.',
-    '- Nếu không đủ cơ sở để xác định, trả recipients rỗng, "noBtgd": false.',
-    '- reason: một câu ngắn bằng tiếng Việt, nêu hạng mục ma trận đã áp dụng (hoặc "không có trong ma trận").',
-    '- Chỉ trả về JSON hợp lệ, không thêm chữ nào khác, đúng dạng: {"recipients":["mã",...],"reason":"...","confident":true,"noBtgd":false}'
+    '- Nếu không đủ cơ sở để xác định, trả recipients rỗng.',
+    '- Chỉ trả về JSON hợp lệ, không thêm chữ nào khác, đúng dạng: {"recipients":["mã",...],"reason":"một câu ngắn bằng tiếng Việt","confident":true}'
   ].join('\n');
 }
 
@@ -312,17 +313,10 @@ async function callDeepSeek(s, system, user) {
       ],
       response_format: { type: 'json_object' },
       temperature: 0,
-      max_tokens: 500
+      max_tokens: 400
     })
   });
-  // DeepSeek tự cache phần đầu giống nhau giữa các lần gọi: prompt_cache_hit_tokens tính giá rẻ hơn
-  const u = data.usage || {};
-  const hit = u.prompt_cache_hit_tokens || 0;
-  const miss = u.prompt_cache_miss_tokens != null ? u.prompt_cache_miss_tokens : Math.max(0, (u.prompt_tokens || 0) - hit);
-  return {
-    text: data.choices?.[0]?.message?.content || '',
-    usage: { provider: 'deepseek', model: data.model || '', uncached: miss, cacheRead: hit, cacheWrite: 0, output: u.completion_tokens || 0 }
-  };
+  return data.choices?.[0]?.message?.content || '';
 }
 
 async function callClaude(s, system, user) {
@@ -337,32 +331,20 @@ async function callClaude(s, system, user) {
     },
     body: JSON.stringify({
       model: s.claudeModel || 'claude-haiku-4-5-20251001',
-      max_tokens: 500,
+      max_tokens: 400,
       temperature: 0,
-      // ma trận thẩm quyền làm phần system dài và giống hệt nhau giữa các văn bản: dùng prompt caching
-      system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+      system,
       messages: [{ role: 'user', content: user }]
     })
   });
-  const u = data.usage || {};
-  return {
-    text: (data.content || []).map(b => b.text || '').join(''),
-    usage: {
-      provider: 'claude',
-      model: data.model || '',
-      uncached: u.input_tokens || 0,
-      cacheRead: u.cache_read_input_tokens || 0,
-      cacheWrite: u.cache_creation_input_tokens || 0,
-      output: u.output_tokens || 0
-    }
-  };
+  return (data.content || []).map(b => b.text || '').join('');
 }
 
 async function classify(doc) {
   const s = await getSettings();
   const system = buildSystem(s);
   const user = buildUser(doc);
-  const { text, usage } = s.provider === 'claude'
+  const text = s.provider === 'claude'
     ? await callClaude(s, system, user)
     : await callDeepSeek(s, system, user);
 
@@ -377,9 +359,7 @@ async function classify(doc) {
   const allowed = new Set(s.members.map(x => String(x.id)));
   let recipients = [...new Set((parsed.recipients || []).map(String))].filter(id => allowed.has(id));
   let usedFallback = false;
-  // AI xác định văn bản không cần trình BTGĐ theo ma trận: không dùng người nhận mặc định
-  const noBtgd = !recipients.length && parsed.noBtgd === true;
-  if (!recipients.length && !noBtgd && s.fallbackIds.length) {
+  if (!recipients.length && s.fallbackIds.length) {
     recipients = s.fallbackIds.filter(id => allowed.has(String(id))).map(String);
     usedFallback = recipients.length > 0;
   }
@@ -387,9 +367,7 @@ async function classify(doc) {
     recipients,
     reason: String(parsed.reason || '').slice(0, 300),
     confident: parsed.confident !== false,
-    usedFallback,
-    noBtgd,
-    usage
+    usedFallback
   };
 }
 

@@ -11,21 +11,10 @@ async function load() {
   $('dryRun').checked = s.dryRun;
   $('maxAgeMonths').value = s.maxAgeMonths;
   $('autoMinutes').value = s.autoMinutes;
-  const p = s.prices;
-  $('pDsMiss').value = p.deepseek.miss;
-  $('pDsHit').value = p.deepseek.hit;
-  $('pDsOut').value = p.deepseek.out;
-  $('pClIn').value = p.claude.in;
-  $('pClWrite').value = p.claude.write;
-  $('pClRead').value = p.claude.read;
-  $('pClOut').value = p.claude.out;
   $('members').value = s.members.map(m => `${m.id} | ${m.name}`).join('\n');
   $('fallbackIds').value = s.fallbackIds.join(', ');
   $('holdKeywords').value = s.holdKeywords.join('\n');
   $('rules').value = s.rules;
-  $('matrixInfo').textContent =
-    `Sau quy luật này, AI luôn nhận kèm Ma trận thẩm quyền (${AUTHORITY_MATRIX_ROWS} dòng, từ file ${AUTHORITY_MATRIX_SOURCE}) ` +
-    'và bảng từ viết tắt. Ma trận đổi thì chạy tools/build_matrix.py với file Excel mới (xem README).';
 }
 
 function parseMembers(text) {
@@ -39,8 +28,6 @@ function parseMembers(text) {
     })
     .filter(m => m.id && m.name);
 }
-
-const price = id => Math.max(0, parseFloat($(id).value) || 0);
 
 // 0 = tắt; bật thì tối thiểu 10 phút để không mở cửa sổ liên tục
 function autoMinutes(v) {
@@ -75,10 +62,6 @@ $('save').onclick = async () => {
       dryRun: $('dryRun').checked,
       maxAgeMonths: Math.max(0, parseInt($('maxAgeMonths').value, 10) || 0),
       autoMinutes: autoMinutes($('autoMinutes').value),
-      prices: {
-        deepseek: { miss: price('pDsMiss'), hit: price('pDsHit'), out: price('pDsOut') },
-        claude: { in: price('pClIn'), write: price('pClWrite'), read: price('pClRead'), out: price('pClOut') }
-      },
       members,
       fallbackIds,
       holdKeywords: (() => {

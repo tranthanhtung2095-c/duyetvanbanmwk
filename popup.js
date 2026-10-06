@@ -15,26 +15,9 @@ function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
 
-const fmtInt = n => Math.round(n).toLocaleString('vi-VN');
-const fmtUsd = n => '$' + (n < 0.01 && n > 0 ? n.toFixed(4) : n.toFixed(2));
-
-// "AI: 12 lần gọi, 800.000 token đầu vào (85% đọc từ cache), 1.200 token đầu ra, ước tính $0.05"
-function usageLine(list, prices) {
-  const t = sumUsage(list, prices);
-  if (!t.calls) return '';
-  const input = t.uncached + t.cacheRead + t.cacheWrite;
-  const pct = input ? Math.round((t.cacheRead / input) * 100) : 0;
-  let line = `AI: ${t.calls} lần gọi, ${fmtInt(input)} token đầu vào (${pct}% đọc từ cache), ${fmtInt(t.output)} token đầu ra`;
-  if (t.priced) line += `, ước tính ${fmtUsd(t.cost)}` + (t.priced < t.calls ? ` (${t.priced}/${t.calls} lần có giá)` : '');
-  else line += ' (nhập giá trong Cài đặt để ước tính tiền)';
-  return line + '.';
-}
-
 async function renderHistCount() {
   const { history = [] } = await chrome.storage.local.get('history');
   $('histCount').textContent = `Lịch sử: ${history.length} văn bản`;
-  const s = await getSettings();
-  $('histUsage').textContent = usageLine(history.map(h => h.usage), s.prices).replace(/^AI:/, 'AI trong lịch sử:');
 }
 
 async function renderAuto() {
@@ -75,8 +58,6 @@ async function render() {
   if (c('old')) line += ` Không đẩy ${c('old')} văn bản quá ${run.maxAgeMonths} tháng.`;
   if (c('prev')) line += ` ${c('prev')} văn bản đã xử lý ở lượt trước, không xử lý lại.`;
   if (run.dateFilterOk === false) line += ' Lưu ý: không điền được ô Ngày tạo, đã lọc theo ngày trong mã văn bản.';
-  const ul = usageLine(all.map(i => i.usage), s.prices);
-  if (ul) line += ' ' + ul;
   $('status').textContent = line;
 
   $('list').innerHTML = items.length
@@ -138,11 +119,6 @@ function buildReviewWorkbook(history, s) {
     { title: 'AI chắc chắn', width: 10 },
     { title: 'Dùng người nhận mặc định', width: 12 },
     { title: 'Lỗi / ghi chú', width: 35 },
-    { title: 'Token đầu vào (không cache)', width: 12 },
-    { title: 'Token đọc cache', width: 12 },
-    { title: 'Token ghi cache', width: 12 },
-    { title: 'Token đầu ra', width: 10 },
-    { title: 'Chi phí AI ước tính (USD)', width: 12 },
     { title: 'Trích nội dung văn bản', width: 70 },
     { title: 'Đánh giá (Đúng/Sai)', width: 14, input: true },
     { title: 'Người nhận đúng (mã)', width: 16, input: true },
@@ -167,11 +143,6 @@ function buildReviewWorkbook(history, s) {
       ['skipped', 'error', 'returned'].includes(h.status) ? '' : h.confident === false ? 'Không' : 'Có',
       h.usedFallback ? 'Có' : '',
       h.error,
-      h.usage ? h.usage.uncached || 0 : '',
-      h.usage ? h.usage.cacheRead || 0 : '',
-      h.usage ? h.usage.cacheWrite || 0 : '',
-      h.usage ? h.usage.output || 0 : '',
-      (c => (c == null ? '' : Math.round(c * 1e6) / 1e6))(usageCost(h.usage, s.prices)),
       h.excerpt,
       '',
       '',
