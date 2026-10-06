@@ -939,7 +939,11 @@
       if (!res.recipients || !res.recipients.length) {
         await endItem(i, {
           status: 'skipped',
-          reason: removed.length ? res.reason : res.reason || 'AI không xác định được người nhận.'
+          reason: res.noBtgd
+            ? 'Không cần trình BTGĐ theo ma trận thẩm quyền: ' + (res.reason || '')
+            : removed.length
+              ? res.reason
+              : res.reason || 'AI không xác định được người nhận.'
         });
         await goBack(run);
         return;

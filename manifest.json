@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MEDworking - Đẩy văn bản lên BTGĐ",
-  "version": "0.4.2",
+  "version": "0.5.0",
   "description": "Cứ 30 phút (hoặc khi bấm Bắt đầu) đọc tab Chờ duyệt trong Văn bản đến, dùng AI xác định thành viên Ban Tổng giám đốc liên quan và đẩy văn bản lên.",
   "permissions": ["storage", "unlimitedStorage", "scripting", "notifications", "debugger", "alarms"],
   "host_permissions": [
