@@ -12,13 +12,14 @@ const DEFAULT_MEMBERS = [
 // Tăng số này mỗi khi đổi quy luật mặc định: bản cài đặt đã lưu sẽ tự cập nhật quy luật mới.
 // 10: quay lại quy luật của bản 0.4.2 (bản 0.5.x đã lưu quy luật số 9 theo ma trận thẩm quyền,
 // phải lớn hơn 9 thì cài đặt đã lưu mới được thay lại).
-const RULES_VERSION = 10;
+// 11: thêm ngoại lệ không gửi PTGĐ Thưởng (dự trù tài chính, mua sắm CNTT, chi trả CTV ngoài kỳ).
+const RULES_VERSION = 11;
 
 const DEFAULT_RULES = `Phân công lĩnh vực:
 Nguyễn Trí Anh (807) - Tổng giám đốc: công nghệ thông tin, pháp chế, ban kiểm soát, khối quản trị (tổ chức cán bộ, hành chính...), Med Pharma; quy chế, chính sách nhân sự và tổ chức bộ máy chung toàn tập đoàn; truyền thông, marketing.
 Nguyễn Duy Hùng (15) - Phó tổng giám đốc: kinh doanh khách hàng lẻ, các chi nhánh, trung tâm lấy mẫu tại nhà toàn quốc, ban trải nghiệm khách hàng.
 Nguyễn Văn Quyết (8) - Phó tổng giám đốc: kinh doanh khách hàng doanh nghiệp (Trung tâm KHDN), Med Campuchia.
-Phạm Hữu Thưởng (14) - Phó tổng giám đốc: hậu cần, dự án đầu tư/xây dựng/sửa chữa cơ sở vật chất, mua hàng, cung ứng; mọi việc mua sắm, chi phí thường quy (bất kể giá trị). ("Dự án" ở đây KHÔNG gồm "đơn vị dự án"/dự án khách hàng của Trung tâm KHDN - các việc đó thuộc Nguyễn Văn Quyết.)
+Phạm Hữu Thưởng (14) - Phó tổng giám đốc: hậu cần, dự án đầu tư/xây dựng/sửa chữa cơ sở vật chất, mua hàng, cung ứng; mọi việc mua sắm, chi phí thường quy (bất kể giá trị), TRỪ các ngoại lệ ở Quy tắc 3 (dự trù tài chính, mua sắm công nghệ thông tin, chi trả CTV ngoài kỳ). ("Dự án" ở đây KHÔNG gồm "đơn vị dự án"/dự án khách hàng của Trung tâm KHDN - các việc đó thuộc Nguyễn Văn Quyết.)
 Nguyễn Thị Kim Len (304) - Phó tổng giám đốc: chuyên môn y, các bệnh viện, phòng khám, khoa/phòng chuyên môn (xét nghiệm, chẩn đoán hình ảnh, khám bệnh...). Mọi vấn đề chuyên môn y phải qua người này.
 Trần Thị Hà Linh (7002) - Phó tổng giám đốc: tài chính, kế toán, ban tài chính; CHỈ nhận các vấn đề tài chính đặc biệt theo Quy tắc 3. KHÔNG nhận mua sắm, chi phí thường quy dù giá trị lớn, KHÔNG nhận chỉ vì văn bản có nhắc đến tiền.
 
@@ -46,10 +47,14 @@ Quy tắc 2 - Đề xuất cấp quyền phần mềm (cấp/mở/thay đổi qu
 
 Quy tắc 3 - Văn bản có chi phí, tiền (Trần Thị Hà Linh chỉ nhận vấn đề tài chính rất đặc biệt):
 - CHỈ gửi Trần Thị Hà Linh (7002) trong các trường hợp sau:
-  + Chi phí quá kỳ / thanh toán ngoài kỳ (chi phí, hóa đơn của kỳ trước, quá hạn).
+  + Chi phí quá kỳ / thanh toán ngoài kỳ (chi phí, hóa đơn của kỳ trước, quá hạn), trừ phiếu chi trả CTV ngoài kỳ (xem ngoại lệ bên dưới).
   + Điều chuyển tiền giữa các đơn vị, tài khoản, gửi tiết kiệm, đầu tư tài chính, vay.
   + Nghiệp vụ kế toán thuần: điều chỉnh/hủy hóa đơn, công nợ, hạch toán, thu hồi hoặc điều chỉnh khoản đã chi, thuế. Các văn bản này chỉ gửi 7002 (cộng Nguyễn Duy Hùng nếu thuộc chi nhánh ngoài Hà Nội theo Quy tắc 4), không gửi thêm Tổng giám đốc.
   + Đề xuất nhân sự hoặc cấp quyền phần mềm (user) cho CBNV thuộc khối tài chính, kế toán (theo Quy tắc 1, 2).
+- NGOẠI LỆ - các văn bản sau KHÔNG gửi Phạm Hữu Thưởng (14), ưu tiên hơn mọi quy tắc khác về chi phí:
+  + Dự trù tài chính (dự trù tài chính tuần/tháng/quý, dự trù kinh phí, kế hoạch dòng tiền...) → CHỈ gửi Trần Thị Hà Linh (7002), không gửi thêm ai, kể cả khi thuộc chi nhánh ngoài Hà Nội.
+  + Đề xuất mua sắm liên quan đến công nghệ thông tin (máy tính, laptop, màn hình, máy in, thiết bị mạng, switch, router, wifi, camera IP, máy chủ, chữ ký số, token, phần mềm, bản quyền, tên miền, dịch vụ CNTT...) → gửi Phó tổng giám đốc phụ trách đơn vị đề xuất VÀ Tổng giám đốc Nguyễn Trí Anh (807); nếu đơn vị đề xuất do 807 phụ trách (ví dụ Ban CNTT) thì chỉ gửi 807. Không gửi Trần Thị Hà Linh chỉ vì số tiền.
+  + Phiếu chi trả phí tư vấn/thù lao cộng tác viên (CTV) ngoài kỳ → CHỈ gửi Nguyễn Duy Hùng (15), không gửi Trần Thị Hà Linh dù là chi phí ngoài kỳ.
 - Mua sắm, chi phí thường quy (mua máy móc thiết bị, vật tư, hóa chất, vật dụng; sửa chữa, lắp đặt, xây dựng; xe, bảo hiểm, PCCC, biển bảng, hiệu chuẩn thiết bị, thuê địa điểm, nhập kho; gói thầu, hợp đồng dịch vụ...) → gửi Phạm Hữu Thưởng (14), BẤT KỂ giá trị lớn hay nhỏ. Chỉ thêm người phụ trách lĩnh vực khi văn bản cần ý kiến chuyên môn của lĩnh vực đó (ví dụ mua máy xét nghiệm → thêm 304). KHÔNG gửi Trần Thị Hà Linh chỉ vì số tiền lớn.
 - Chi phí rất lớn, từ khoảng 1 tỷ đồng trở lên: gửi thêm Tổng giám đốc Nguyễn Trí Anh (807), ngoài người phụ trách lĩnh vực. Không tự thêm 7002 nếu không thuộc các trường hợp đặc biệt ở trên.
 - Chi phí KHÔNG phải mua sắm/hậu cần (khen thưởng, chế độ, ngoại giao, thưởng KPI/SLA, chi phí kinh doanh...) → gửi người phụ trách lĩnh vực theo nội dung, KHÔNG tự thêm Phạm Hữu Thưởng hay Trần Thị Hà Linh.
@@ -61,6 +66,7 @@ Quy tắc 4 - Đề xuất của các chi nhánh ngoài Hà Nội:
 - Ví dụ: chi nhánh ngoài Hà Nội đề xuất sửa xe, chi phí nhỏ → Phạm Hữu Thưởng (14) và Nguyễn Duy Hùng (15); đề xuất nhân sự cho bác sĩ tại chi nhánh ngoài Hà Nội → Nguyễn Thị Kim Len (304) và Nguyễn Duy Hùng (15).
 - Quy tắc này áp dụng cả khi Quy tắc 1 ghi "chỉ gửi người phụ trách bộ phận". Ở quy tắc này xét theo đơn vị đề xuất / nơi phát sinh vấn đề.
 - Văn bản của các đơn vị tại Hà Nội không áp dụng quy tắc này.
+- Ngoại lệ: dự trù tài chính của chi nhánh ngoài Hà Nội vẫn chỉ gửi Trần Thị Hà Linh (7002) (Quy tắc 3).
 
 Quy tắc 5 - Danh sách miễn giảm (miễn giảm chi phí xét nghiệm, khám chữa bệnh, giảm giá, chiết khấu cho khách hàng/CBNV/đối tác...):
 - Gửi Tổng giám đốc Nguyễn Trí Anh (807) VÀ Phó tổng giám đốc đã được thông tin / đã cho ý kiến về danh sách đó (người được nhắc tên trong văn bản, ví dụ "đã báo cáo PTGĐ...", "theo chỉ đạo của PTGĐ...", "PTGĐ ... đã đồng ý").
