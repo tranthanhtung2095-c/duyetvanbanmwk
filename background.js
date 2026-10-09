@@ -1,4 +1,4 @@
-importScripts('shared.js');
+importScripts('shared.js', 'authority-matrix.js');
 
 const STALE_MS = 10 * 60 * 1000;
 
@@ -258,10 +258,19 @@ function buildSystem(s) {
     'Quy luật phân công:',
     s.rules,
     '',
+    `MA TRẬN THẨM QUYỀN (Authority Matrix) toàn Tập đoàn - nguồn: ${AUTHORITY_MATRIX_SOURCE}.`,
+    'Mỗi hạng mục: "- [số] Hạng mục (loại văn bản)", mỗi dòng con: "· phạm vi áp dụng → vai trò ở cột BTGĐ; TGĐ; HĐQT" hoặc "→ KHÔNG trình BTGĐ (cấp phê chuẩn)" hoặc "→ CHƯA RÕ cấp phê chuẩn".',
+    AUTHORITY_MATRIX,
+    '',
+    'TỪ VIẾT TẮT dùng trong Tập đoàn:',
+    ABBREVIATIONS,
+    '',
     'Yêu cầu:',
     '- Chọn tất cả thành viên liên quan, không chọn người không liên quan.',
-    '- Nếu không đủ cơ sở để xác định, trả recipients rỗng.',
-    '- Chỉ trả về JSON hợp lệ, không thêm chữ nào khác, đúng dạng: {"recipients":["mã",...],"reason":"một câu ngắn bằng tiếng Việt","confident":true}'
+    '- Dòng ma trận khớp ghi "KHÔNG trình BTGĐ": vẫn chọn người nhận theo mục B3 của quy luật và đặt "matrixNoBtgd": true.',
+    '- Chỉ trả recipients rỗng khi thật sự không đủ cơ sở để xác định ai.',
+    '- reason: một câu ngắn bằng tiếng Việt, nêu hạng mục ma trận đã áp dụng (hoặc "không có trong ma trận").',
+    '- Chỉ trả về JSON hợp lệ, không thêm chữ nào khác, đúng dạng: {"recipients":["mã",...],"reason":"...","confident":true,"matrixNoBtgd":false}'
   ].join('\n');
 }
 
@@ -313,7 +322,7 @@ async function callDeepSeek(s, system, user) {
       ],
       response_format: { type: 'json_object' },
       temperature: 0,
-      max_tokens: 400
+      max_tokens: 500
     })
   });
   return data.choices?.[0]?.message?.content || '';
@@ -331,9 +340,10 @@ async function callClaude(s, system, user) {
     },
     body: JSON.stringify({
       model: s.claudeModel || 'claude-haiku-4-5-20251001',
-      max_tokens: 400,
+      max_tokens: 500,
       temperature: 0,
-      system,
+      // ma trận thẩm quyền làm phần system dài và giống hệt nhau giữa các văn bản: dùng prompt caching
+      system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: user }]
     })
   });
@@ -367,7 +377,9 @@ async function classify(doc) {
     recipients,
     reason: String(parsed.reason || '').slice(0, 300),
     confident: parsed.confident !== false,
-    usedFallback
+    usedFallback,
+    // ma trận cho phê chuẩn dưới cấp BTGĐ nhưng văn bản vẫn được đẩy: đánh dấu để rà soát
+    matrixNoBtgd: recipients.length > 0 && !usedFallback && parsed.matrixNoBtgd === true
   };
 }
 

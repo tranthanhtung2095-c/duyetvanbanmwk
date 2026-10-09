@@ -25,7 +25,19 @@ Mọi văn bản đã xử lý (đã đẩy, chạy thử, bỏ qua, lỗi) đư
 
 Mỗi văn bản trong tab Chờ duyệt: đọc nội dung, AI chọn thành viên BTGĐ liên quan, bấm Duyệt văn bản, chọn người nhận, bấm Đồng ý, chờ chuyển, bấm Thoát về danh sách. Sau cùng đối chiếu danh sách để xác nhận văn bản đã rời tab Chờ duyệt.
 
-Quy luật phân công (Cài đặt, mục 4): đề xuất nhân sự gửi thành viên BTGĐ phụ trách bộ phận của CBNV được đề xuất; đề xuất cấp quyền phần mềm gửi Tổng giám đốc và Phó tổng giám đốc phụ trách.
+## Phân công theo Ma trận thẩm quyền
+Người nhận được xác định theo **Ma trận thẩm quyền (Authority Matrix) toàn Tập đoàn** (file `Chuan_hoa_Tu_viet_tat_RACI_TCCB_MEDVN.xlsx`). Mỗi lần phân loại, AI nhận:
+1. Quy luật phân công (Cài đặt, mục 4): khối phụ trách của từng thành viên BTGĐ ("BTGĐ khối"), cách đọc ma trận, và các quy tắc bổ sung (chi nhánh ngoài Hà Nội thêm PTGĐ Hùng; bệnh viện/phòng khám tại Hà Nội thuộc PTGĐ Len; dự trù tài chính chỉ PTGĐ Linh; chi trả CTV ngoài kỳ chỉ PTGĐ Hùng; danh sách miễn giảm; cấp quyền phần mềm). Mâu thuẫn với dòng ma trận khớp rõ ràng thì theo ma trận.
+2. Ma trận rút gọn từ sheet "Authority Matrix - Toàn TĐ" (`authority-matrix.js`): với mỗi hạng mục và phạm vi, ai ở cột BTGĐ/TGĐ/HĐQT, hoặc cấp nào phê chuẩn khi không cần trình BTGĐ.
+3. Bảng từ viết tắt (sheet "Từ viết tắt", mục A-D).
+
+Người nhận là mọi thành viên BTGĐ có vai trò Duyệt hoặc Phê chuẩn ở dòng ma trận khớp với văn bản; "BTGĐ khối" là người phụ trách khối của đơn vị đề xuất (đề xuất nhân sự: khối nơi CBNV làm việc).
+
+**Văn bản mà ma trận cho phê chuẩn ở cấp dưới BTGĐ vẫn được đẩy** (cho BTGĐ khối của đơn vị đề xuất), không bị bỏ qua; lý do có nhãn `[Ma trận: không cần trình BTGĐ - cần rà soát]` để lọc trong file Excel rà soát.
+
+**Cập nhật ma trận** khi có file Excel mới (cần Python): `pip install openpyxl` rồi `python3 tools/build_matrix.py "<đường dẫn file .xlsx>"`. Lệnh ghi lại `authority-matrix.js`; tải lại extension để áp dụng.
+
+**Chi phí AI**: ma trận làm mỗi lần gọi AI dài thêm khoảng 50.000 ký tự. Phần này giống nhau giữa các lần gọi nên được cache (DeepSeek tự cache; Claude dùng prompt caching), các văn bản sau trong cùng lượt chạy chỉ tính giá đọc cache.
 
 ## Văn bản Ban Tổng giám đốc đã có ý kiến
 Trước khi gọi AI, extension đọc cột bên trái trang chi tiết (Thông tin ý kiến, Lịch sử thao tác) và tìm các ý kiến/thao tác đứng tên thành viên BTGĐ trong danh sách Cài đặt:

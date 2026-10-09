@@ -15,6 +15,9 @@ async function load() {
   $('fallbackIds').value = s.fallbackIds.join(', ');
   $('holdKeywords').value = s.holdKeywords.join('\n');
   $('rules').value = s.rules;
+  $('matrixInfo').textContent =
+    `Sau quy luật này, AI luôn nhận kèm Ma trận thẩm quyền (${AUTHORITY_MATRIX_ROWS} dòng, từ file ${AUTHORITY_MATRIX_SOURCE}) ` +
+    'và bảng từ viết tắt. Ma trận đổi thì chạy tools/build_matrix.py với file Excel mới (xem README).';
 }
 
 function parseMembers(text) {

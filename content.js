@@ -956,7 +956,7 @@
       await patchItem(i, {
         phase: 'sending',
         recipients: res.recipients,
-        reason: res.reason,
+        reason: (res.matrixNoBtgd ? '[Ma trận: không cần trình BTGĐ - cần rà soát] ' : '') + (res.reason || ''),
         confident: res.confident,
         usedFallback: !!res.usedFallback
       });
