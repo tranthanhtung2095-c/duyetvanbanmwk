@@ -13,14 +13,15 @@ const DEFAULT_MEMBERS = [
 // 10: quay lại quy luật của bản 0.4.2 (bản 0.5.x đã lưu quy luật số 9 theo ma trận thẩm quyền,
 // phải lớn hơn 9 thì cài đặt đã lưu mới được thay lại).
 // 11: thêm ngoại lệ không gửi PTGĐ Thưởng (dự trù tài chính, mua sắm CNTT, chi trả CTV ngoài kỳ).
-const RULES_VERSION = 11;
+// 12: bệnh viện/phòng khám tại Hà Nội thuộc PTGĐ Len, không phải PTGĐ Hùng.
+const RULES_VERSION = 12;
 
 const DEFAULT_RULES = `Phân công lĩnh vực:
 Nguyễn Trí Anh (807) - Tổng giám đốc: công nghệ thông tin, pháp chế, ban kiểm soát, khối quản trị (tổ chức cán bộ, hành chính...), Med Pharma; quy chế, chính sách nhân sự và tổ chức bộ máy chung toàn tập đoàn; truyền thông, marketing.
-Nguyễn Duy Hùng (15) - Phó tổng giám đốc: kinh doanh khách hàng lẻ, các chi nhánh, trung tâm lấy mẫu tại nhà toàn quốc, ban trải nghiệm khách hàng.
+Nguyễn Duy Hùng (15) - Phó tổng giám đốc: kinh doanh khách hàng lẻ, các chi nhánh/bệnh viện/phòng khám NGOÀI Hà Nội, trung tâm lấy mẫu tại nhà toàn quốc, ban trải nghiệm khách hàng. KHÔNG phụ trách các bệnh viện/phòng khám tại Hà Nội (xem Quy tắc 4b).
 Nguyễn Văn Quyết (8) - Phó tổng giám đốc: kinh doanh khách hàng doanh nghiệp (Trung tâm KHDN), Med Campuchia.
 Phạm Hữu Thưởng (14) - Phó tổng giám đốc: hậu cần, dự án đầu tư/xây dựng/sửa chữa cơ sở vật chất, mua hàng, cung ứng; mọi việc mua sắm, chi phí thường quy (bất kể giá trị), TRỪ các ngoại lệ ở Quy tắc 3 (dự trù tài chính, mua sắm công nghệ thông tin, chi trả CTV ngoài kỳ). ("Dự án" ở đây KHÔNG gồm "đơn vị dự án"/dự án khách hàng của Trung tâm KHDN - các việc đó thuộc Nguyễn Văn Quyết.)
-Nguyễn Thị Kim Len (304) - Phó tổng giám đốc: chuyên môn y, các bệnh viện, phòng khám, khoa/phòng chuyên môn (xét nghiệm, chẩn đoán hình ảnh, khám bệnh...). Mọi vấn đề chuyên môn y phải qua người này.
+Nguyễn Thị Kim Len (304) - Phó tổng giám đốc: chuyên môn y, khoa/phòng chuyên môn (xét nghiệm, chẩn đoán hình ảnh, khám bệnh...); quản lý, điều hành toàn bộ các bệnh viện/phòng khám TẠI HÀ NỘI (Med Hồng Hà, Med Ba Đình, Med Thanh Xuân, Med Cầu Giấy...). Mọi vấn đề chuyên môn y phải qua người này.
 Trần Thị Hà Linh (7002) - Phó tổng giám đốc: tài chính, kế toán, ban tài chính; CHỈ nhận các vấn đề tài chính đặc biệt theo Quy tắc 3. KHÔNG nhận mua sắm, chi phí thường quy dù giá trị lớn, KHÔNG nhận chỉ vì văn bản có nhắc đến tiền.
 
 Nguyên tắc chung:
@@ -30,7 +31,8 @@ Nguyên tắc chung:
 Quy tắc 1 - Đề xuất nhân sự (nghỉ phép, nghỉ việc, trở lại công tác, đánh giá nhân viên, hết hạn thử việc/hợp đồng, ký/gia hạn hợp đồng, tuyển dụng, điều chuyển, bổ nhiệm, khen thưởng, kỷ luật...):
 - Gửi thành viên Ban Tổng giám đốc phụ trách bộ phận mà cán bộ nhân viên (CBNV) được đề xuất đang làm việc, theo bảng phân công ở trên. Ví dụ:
   + CBNV chuyên môn (bác sĩ, kỹ thuật viên, điều dưỡng, CBNV bệnh viện, phòng khám, khoa xét nghiệm, tổ nhận mẫu...) → Nguyễn Thị Kim Len (304).
-  + CBNV kinh doanh khách hàng lẻ, chi nhánh, trung tâm tại nhà, trải nghiệm khách hàng → Nguyễn Duy Hùng (15).
+  + CBNV kinh doanh khách hàng lẻ, chi nhánh ngoài Hà Nội, trung tâm tại nhà, trải nghiệm khách hàng → Nguyễn Duy Hùng (15).
+  + CBNV của bệnh viện/phòng khám tại Hà Nội (Med Hồng Hà, Med Ba Đình, Med Thanh Xuân, Med Cầu Giấy...) → Nguyễn Thị Kim Len (304), không gửi Nguyễn Duy Hùng.
   + CBNV kinh doanh khách hàng doanh nghiệp, Med Campuchia → Nguyễn Văn Quyết (8).
   + CBNV hậu cần, dự án, mua hàng, cung ứng → Phạm Hữu Thưởng (14).
   + CBNV tài chính, kế toán (kể cả phòng kế toán chi nhánh) → Trần Thị Hà Linh (7002).
@@ -67,6 +69,12 @@ Quy tắc 4 - Đề xuất của các chi nhánh ngoài Hà Nội:
 - Quy tắc này áp dụng cả khi Quy tắc 1 ghi "chỉ gửi người phụ trách bộ phận". Ở quy tắc này xét theo đơn vị đề xuất / nơi phát sinh vấn đề.
 - Văn bản của các đơn vị tại Hà Nội không áp dụng quy tắc này.
 - Ngoại lệ: dự trù tài chính của chi nhánh ngoài Hà Nội vẫn chỉ gửi Trần Thị Hà Linh (7002) (Quy tắc 3).
+
+Quy tắc 4b - Bệnh viện/phòng khám TẠI HÀ NỘI (Med Hồng Hà/Ba Đình, Med Ba Đình, Med Thanh Xuân, Med Cầu Giấy và các bệnh viện/phòng khám MEDLATEC khác ở Hà Nội):
+- Đề xuất của các đơn vị này hoặc liên quan đến hoạt động, kinh doanh, vận hành, nhân sự của các đơn vị này → gửi Nguyễn Thị Kim Len (304). KHÔNG gửi Nguyễn Duy Hùng (15): các đơn vị này không phải "chi nhánh" theo Quy tắc 4.
+- Mua sắm trang thiết bị, vật tư, sửa chữa, chi phí hậu cần thường quy KHÔNG liên quan công nghệ thông tin tại các đơn vị này → gửi Phạm Hữu Thưởng (14) (Quy tắc 3), không gửi Nguyễn Duy Hùng.
+- Mua sắm công nghệ thông tin tại các đơn vị này → theo ngoại lệ CNTT ở Quy tắc 3: Nguyễn Thị Kim Len (304) và Tổng giám đốc (807).
+- Các quy tắc khác (tài chính, khám sức khoẻ, miễn giảm...) vẫn áp dụng bình thường, chỉ thay "PTGĐ phụ trách đơn vị" bằng 304. Việc của trung tâm lấy mẫu tại nhà (kể cả ở Hà Nội) vẫn thuộc Nguyễn Duy Hùng.
 
 Quy tắc 5 - Danh sách miễn giảm (miễn giảm chi phí xét nghiệm, khám chữa bệnh, giảm giá, chiết khấu cho khách hàng/CBNV/đối tác...):
 - Gửi Tổng giám đốc Nguyễn Trí Anh (807) VÀ Phó tổng giám đốc đã được thông tin / đã cho ý kiến về danh sách đó (người được nhắc tên trong văn bản, ví dụ "đã báo cáo PTGĐ...", "theo chỉ đạo của PTGĐ...", "PTGĐ ... đã đồng ý").
