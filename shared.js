@@ -48,7 +48,7 @@ C. Quy tắc bổ sung (áp dụng cùng ma trận):
 const DEFAULTS = {
   provider: 'deepseek', // 'deepseek' | 'claude'
   deepseekKey: '',
-  deepseekModel: 'deepseek-chat',
+  deepseekModel: 'deepseek-flash', // 10/2026: DeepSeek ngừng 'deepseek-chat', chỉ nhận deepseek-flash, deepseek-v4-pro
   claudeKey: '',
   claudeModel: 'claude-haiku-4-5-20251001',
   listUrl: 'https://medworking.medlatec.vn/document/incoming',

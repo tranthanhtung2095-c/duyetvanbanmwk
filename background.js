@@ -318,14 +318,40 @@ function describeDeepSeek(data) {
     (m.reasoning_content ? ', có phần suy nghĩ' : '');
 }
 
+// DeepSeek báo tên model không còn dùng được, kèm danh sách tên hợp lệ:
+// "The supported API model names are deepseek-flash, deepseek-v4-pro, but you passed ..."
+// Chọn tên có "flash" (rẻ, nhanh), không có thì tên đầu tiên.
+function pickSupportedModel(err) {
+  const m = String((err && err.message) || '').match(/supported API model names are (.+?),? but you passed/i);
+  if (!m) return null;
+  const names = m[1].split(',').map(x => x.trim().toLowerCase()).filter(x => /^[a-z0-9.\-]+$/.test(x));
+  return names.find(x => x.includes('flash')) || names[0] || null;
+}
+
 async function callDeepSeek(s, system, user) {
   if (!s.deepseekKey) throw new Error('Chưa nhập API key DeepSeek');
-  const ask = (jsonMode, maxTokens) =>
+  // tên model của DeepSeek viết thường; người dùng gõ "Deepseek-..." vẫn dùng được
+  let model = (s.deepseekModel || DEFAULTS.deepseekModel).trim().toLowerCase();
+  const ask = async (jsonMode, maxTokens) => {
+    try {
+      return await send(jsonMode, maxTokens);
+    } catch (e) {
+      const alt = pickSupportedModel(e);
+      if (!alt || alt === model) throw e;
+      // tên model cũ bị ngừng: chuyển sang tên DeepSeek gợi ý, lưu vào Cài đặt và gọi lại
+      console.warn(`[MED-pusher] DeepSeek không nhận model "${model}", chuyển sang "${alt}"`);
+      model = alt;
+      const { settings } = await chrome.storage.local.get('settings');
+      await chrome.storage.local.set({ settings: { ...(settings || {}), deepseekModel: alt } });
+      return await send(jsonMode, maxTokens);
+    }
+  };
+  const send = (jsonMode, maxTokens) =>
     fetchJson('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + s.deepseekKey },
       body: JSON.stringify({
-        model: s.deepseekModel || 'deepseek-chat',
+        model,
         messages: [
           { role: 'system', content: system },
           { role: 'user', content: user }
