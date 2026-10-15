@@ -309,23 +309,52 @@ async function fetchJson(url, opts) {
   throw lastErr;
 }
 
+// Mô tả ngắn một phản hồi DeepSeek, để ghi vào thông báo lỗi khi câu trả lời rỗng
+function describeDeepSeek(data) {
+  const c = (data && data.choices && data.choices[0]) || {};
+  const m = c.message || {};
+  const out = data && data.usage ? data.usage.completion_tokens : '?';
+  return `model=${(data && data.model) || '?'}, finish_reason=${c.finish_reason || '?'}, token trả về=${out}` +
+    (m.reasoning_content ? ', có phần suy nghĩ' : '');
+}
+
 async function callDeepSeek(s, system, user) {
   if (!s.deepseekKey) throw new Error('Chưa nhập API key DeepSeek');
-  const data = await fetchJson('https://api.deepseek.com/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + s.deepseekKey },
-    body: JSON.stringify({
-      model: s.deepseekModel || 'deepseek-chat',
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: user }
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0,
-      max_tokens: 500
-    })
-  });
-  return data.choices?.[0]?.message?.content || '';
+  const ask = (jsonMode, maxTokens) =>
+    fetchJson('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + s.deepseekKey },
+      body: JSON.stringify({
+        model: s.deepseekModel || 'deepseek-chat',
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: user }
+        ],
+        ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
+        temperature: 0,
+        max_tokens: maxTokens
+      })
+    });
+  const contentOf = data => (data.choices?.[0]?.message?.content || '').trim();
+
+  // max_tokens rộng: model "suy nghĩ" tính cả phần suy nghĩ vào giới hạn này, 500 như trước có thể
+  // hết trước khi kịp viết câu trả lời. DeepSeek chỉ tính tiền số token thực sự sinh ra.
+  let data = await ask(true, 4000);
+  let text = contentOf(data);
+  if (!text) {
+    // Câu trả lời rỗng (chế độ JSON thỉnh thoảng trả rỗng, hoặc hết token): thử lại một lần,
+    // không ép JSON và cho nhiều token hơn; lời nhắc vẫn yêu cầu chỉ trả JSON.
+    const first = describeDeepSeek(data);
+    data = await ask(false, 8000);
+    text = contentOf(data);
+    if (!text) {
+      throw new Error(
+        `DeepSeek trả về câu trả lời rỗng 2 lần (${first} | ${describeDeepSeek(data)}). ` +
+          'Kiểm tra tên model trong Cài đặt, mục 2.'
+      );
+    }
+  }
+  return text;
 }
 
 async function callClaude(s, system, user) {
