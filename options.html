@@ -19,6 +19,8 @@
     <input type="radio" name="provider" id="p-deepseek" value="deepseek"><label for="p-deepseek">DeepSeek</label>
     &nbsp;&nbsp;
     <input type="radio" name="provider" id="p-claude" value="claude"><label for="p-claude">Claude</label>
+    &nbsp;&nbsp;
+    <input type="radio" name="provider" id="p-compat" value="compat"><label for="p-compat">Nhà cung cấp khác (Qwen, Kimi, GLM...)</label>
   </div>
   <label for="deepseekKey">API key DeepSeek</label>
   <input type="password" id="deepseekKey" autocomplete="off">
@@ -26,6 +28,20 @@
   <input type="text" id="deepseekModel" placeholder="deepseek-flash">
   <p class="hint">Tên model API của DeepSeek, viết thường (10/2026: deepseek-flash hoặc deepseek-v4-pro). DeepSeek ngừng một tên thì extension tự chuyển sang tên DeepSeek gợi ý và lưu lại.</p>
   <p class="warn">Nội dung văn bản (tên, mã nhân viên, điểm đánh giá...) được gửi tới máy chủ của nhà cung cấp AI đã chọn.</p>
+  <div id="compatBox" style="border:1px solid #c4cbd4;border-radius:6px;padding:8px 10px;margin-top:10px">
+    <b>Nhà cung cấp khác</b> (API tương thích OpenAI)
+    <label for="compatPreset">Chọn nhanh</label>
+    <select id="compatPreset"><option value="">- Tự nhập địa chỉ API -</option></select>
+    <label for="compatBaseUrl">Địa chỉ API (base URL)</label>
+    <input type="text" id="compatBaseUrl" placeholder="https://.../v1">
+    <label for="compatKey">API key</label>
+    <input type="password" id="compatKey" autocomplete="off">
+    <label for="compatModel">Model</label>
+    <input type="text" id="compatModel" list="compatModels" placeholder="bấm Lấy danh sách model rồi chọn">
+    <datalist id="compatModels"></datalist>
+    <div style="margin-top:6px"><button class="secondary" id="listModels" type="button">Lấy danh sách model</button> <span id="modelsMsg" class="hint"></span></div>
+    <p class="hint">Địa chỉ trong "Chọn nhanh" là gợi ý, nên đối chiếu với trang hướng dẫn API của nhà cung cấp. Nút "Lấy danh sách model" kiểm tra luôn API key và cho chọn đúng tên model. Chọn model có ngữ cảnh từ 64.000 token trở lên (mỗi văn bản gửi khoảng 40.000 token). Lần đầu bấm Lưu, Chrome sẽ hỏi quyền truy cập địa chỉ API này - chọn Cho phép.</p>
+  </div>
   <label for="claudeKey">API key Claude</label>
   <input type="password" id="claudeKey" autocomplete="off">
   <label for="claudeModel">Model Claude</label>

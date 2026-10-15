@@ -5,7 +5,7 @@
 2. Bấm **Tải tiện ích đã giải nén**, chọn thư mục `med-extension` (giải nén zip trước).
 3. Bấm biểu tượng extension, chọn **Cài đặt**:
    - Địa chỉ trang Văn bản đến đã điền sẵn (medworking.medlatec.vn/document/incoming).
-   - Chọn DeepSeek hoặc Claude và nhập API key tương ứng.
+   - Chọn DeepSeek, Claude, hoặc **Nhà cung cấp khác** (Qwen, Kimi, GLM... - API tương thích OpenAI) và nhập API key tương ứng. Với nhà cung cấp khác: chọn nhanh nhà cung cấp (hoặc tự nhập địa chỉ API), dán API key, bấm **Lấy danh sách model** để kiểm tra key và chọn model (ngữ cảnh từ 64.000 token trở lên), bấm **Lưu** và chọn **Cho phép** khi Chrome hỏi quyền truy cập địa chỉ API.
 4. Bấm **Lưu**.
 
 ## Cách chạy

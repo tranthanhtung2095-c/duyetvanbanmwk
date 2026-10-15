@@ -46,7 +46,10 @@ C. Quy tắc bổ sung (áp dụng cùng ma trận):
 7. Chọn đúng và đủ, không thêm người "cho chắc". Không tự thêm TGĐ (807) nếu dòng ma trận không có TGĐ, văn bản không thuộc khối của 807 và không thuộc mục B4, C5, C6.`;
 
 const DEFAULTS = {
-  provider: 'deepseek', // 'deepseek' | 'claude'
+  provider: 'deepseek', // 'deepseek' | 'claude' | 'compat' (nhà cung cấp khác, API tương thích OpenAI)
+  compatBaseUrl: '',
+  compatKey: '',
+  compatModel: '',
   deepseekKey: '',
   deepseekModel: 'deepseek-flash', // 10/2026: DeepSeek ngừng 'deepseek-chat', chỉ nhận deepseek-flash, deepseek-v4-pro
   claudeKey: '',
@@ -64,6 +67,16 @@ const DEFAULTS = {
 
 // Trạng thái không hiện từng dòng trong popup/thông báo: quá hạn tháng, đã xử lý ở lượt trước
 const HIDDEN_STATUS = ['old', 'prev'];
+
+// Nhà cung cấp AI có API tương thích OpenAI (gọi giống DeepSeek). Chỉ là gợi ý để điền sẵn địa
+// chỉ API; tên model nên lấy bằng nút "Lấy danh sách model" trong Cài đặt vì nhà cung cấp hay đổi.
+const COMPAT_PRESETS = [
+  { id: 'qwen-intl', name: 'Qwen - Alibaba Cloud (quốc tế, Singapore)', baseUrl: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus' },
+  { id: 'qwen-cn', name: 'Qwen - Alibaba Cloud (Trung Quốc)', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus' },
+  { id: 'kimi', name: 'Kimi - Moonshot AI (quốc tế)', baseUrl: 'https://api.moonshot.ai/v1', model: '' },
+  { id: 'glm', name: 'GLM - Zhipu AI / Z.ai (quốc tế)', baseUrl: 'https://api.z.ai/api/paas/v4', model: '' },
+  { id: 'glm-cn', name: 'GLM - Zhipu AI (Trung Quốc)', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', model: '' }
+];
 
 async function getSettings() {
   const { settings } = await chrome.storage.local.get('settings');

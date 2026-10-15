@@ -7,6 +7,11 @@ async function load() {
   $('deepseekKey').value = s.deepseekKey;
   $('deepseekModel').value = s.deepseekModel;
   $('claudeKey').value = s.claudeKey;
+  $('compatBaseUrl').value = s.compatBaseUrl;
+  $('compatKey').value = s.compatKey;
+  $('compatModel').value = s.compatModel;
+  const preset = COMPAT_PRESETS.find(p => p.baseUrl === s.compatBaseUrl);
+  $('compatPreset').value = preset ? preset.id : '';
   $('claudeModel').value = s.claudeModel;
   $('dryRun').checked = s.dryRun;
   $('maxAgeMonths').value = s.maxAgeMonths;
@@ -38,10 +43,59 @@ function autoMinutes(v) {
   return n <= 0 ? 0 : Math.max(10, n);
 }
 
+// Quyền truy cập địa chỉ API của nhà cung cấp khác. Phải gọi ngay trong lúc bấm nút (Chrome chỉ
+// cho xin quyền khi người dùng vừa thao tác), nên gọi trước mọi lệnh await khác.
+function requestCompatPermission() {
+  const base = $('compatBaseUrl').value.trim();
+  if (!/^https:\/\//i.test(base)) return Promise.resolve(true);
+  return chrome.permissions.request({ origins: [new URL(base).origin + '/*'] });
+}
+
+for (const p of COMPAT_PRESETS) {
+  const o = document.createElement('option');
+  o.value = p.id;
+  o.textContent = p.name;
+  $('compatPreset').appendChild(o);
+}
+$('compatPreset').onchange = () => {
+  const p = COMPAT_PRESETS.find(x => x.id === $('compatPreset').value);
+  if (!p) return;
+  $('compatBaseUrl').value = p.baseUrl;
+  if (p.model) $('compatModel').value = p.model;
+  $('p-compat').checked = true;
+};
+
+$('listModels').onclick = async () => {
+  const m = $('modelsMsg');
+  m.textContent = 'Đang lấy...';
+  try {
+    const granted = await requestCompatPermission();
+    if (!granted) throw new Error('Chưa cho phép truy cập địa chỉ API.');
+    const base = $('compatBaseUrl').value.trim().replace(/\/+$/, '');
+    if (!/^https:\/\//i.test(base)) throw new Error('Nhập địa chỉ API bắt đầu bằng https://');
+    const r = await fetch(base + '/models', { headers: { Authorization: 'Bearer ' + $('compatKey').value.trim() } });
+    const text = await r.text();
+    if (!r.ok) throw new Error(`HTTP ${r.status}: ${text.slice(0, 150)}`);
+    const ids = ((JSON.parse(text).data) || []).map(x => x.id).filter(Boolean).sort();
+    $('compatModels').innerHTML = ids.map(id => `<option value="${id.replace(/"/g, '&quot;')}">`).join('');
+    m.textContent = ids.length
+      ? `API key hợp lệ, có ${ids.length} model. Bấm vào ô Model để chọn: ${ids.slice(0, 12).join(', ')}${ids.length > 12 ? '...' : ''}`
+      : 'API key hợp lệ nhưng nhà cung cấp không trả danh sách model - nhập tên model theo hướng dẫn của nhà cung cấp.';
+  } catch (e) {
+    m.textContent = 'Lỗi: ' + e.message;
+  }
+};
+
 $('save').onclick = async () => {
   const msg = $('msg');
   msg.textContent = '';
+  const permission = $('p-compat').checked ? requestCompatPermission() : Promise.resolve(true);
   try {
+    if (!(await permission)) throw new Error('Chưa cho phép truy cập địa chỉ API của nhà cung cấp AI.');
+    if ($('p-compat').checked) {
+      if (!/^https:\/\//i.test($('compatBaseUrl').value.trim())) throw new Error('Nhập địa chỉ API của nhà cung cấp khác (bắt đầu bằng https://).');
+      if (!$('compatModel').value.trim()) throw new Error('Chọn model của nhà cung cấp khác (bấm "Lấy danh sách model").');
+    }
     const listUrl = $('listUrl').value.trim();
     if (!/^https?:\/\//i.test(listUrl)) throw new Error('Địa chỉ trang Văn bản đến chưa hợp lệ.');
 
@@ -61,6 +115,9 @@ $('save').onclick = async () => {
       deepseekKey: $('deepseekKey').value.trim(),
       deepseekModel: $('deepseekModel').value.trim() || DEFAULTS.deepseekModel,
       claudeKey: $('claudeKey').value.trim(),
+      compatBaseUrl: $('compatBaseUrl').value.trim().replace(/\/+$/, ''),
+      compatKey: $('compatKey').value.trim(),
+      compatModel: $('compatModel').value.trim(),
       claudeModel: $('claudeModel').value.trim() || DEFAULTS.claudeModel,
       dryRun: $('dryRun').checked,
       maxAgeMonths: Math.max(0, parseInt($('maxAgeMonths').value, 10) || 0),

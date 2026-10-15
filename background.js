@@ -170,9 +170,10 @@ async function startRun(trigger) {
     notify('Chưa cấu hình', 'Vào Cài đặt và nhập địa chỉ trang Văn bản đến của MEDworking.');
     return { ok: false, error: 'Chưa nhập địa chỉ trang Văn bản đến (vào Cài đặt).' };
   }
-  const key = s.provider === 'claude' ? s.claudeKey : s.deepseekKey;
+  const key = s.provider === 'claude' ? s.claudeKey : s.provider === 'compat' ? s.compatKey : s.deepseekKey;
   if (!key) {
-    notify('Chưa có API key', 'Vào Cài đặt và nhập API key cho ' + (s.provider === 'claude' ? 'Claude' : 'DeepSeek') + '.');
+    const who = s.provider === 'claude' ? 'Claude' : s.provider === 'compat' ? 'nhà cung cấp AI khác' : 'DeepSeek';
+    notify('Chưa có API key', 'Vào Cài đặt và nhập API key cho ' + who + '.');
     return { ok: false, error: 'Chưa nhập API key (vào Cài đặt).' };
   }
   const cur = await getRun();
@@ -366,7 +367,7 @@ async function streamChat(url, headers, body) {
         } catch (e) {
           continue;
         }
-        if (j.error) throw new Error('DeepSeek: ' + String(j.error.message || JSON.stringify(j.error)).slice(0, 200));
+        if (j.error) throw new Error('AI: ' + String(j.error.message || JSON.stringify(j.error)).slice(0, 200));
         model = j.model || model;
         const c = j.choices && j.choices[0];
         if (!c) continue;
@@ -477,6 +478,50 @@ async function callDeepSeek(s, system, user) {
   return text;
 }
 
+// Nhà cung cấp khác có API tương thích OpenAI (Qwen, Kimi, GLM...): cùng cách gọi stream như
+// DeepSeek nhưng không ép chế độ JSON (không phải nhà cung cấp nào cũng hỗ trợ) - lời nhắc đã
+// yêu cầu chỉ trả JSON và phần đọc kết quả tự tìm khối {...}.
+async function callCompat(s, system, user) {
+  const base = String(s.compatBaseUrl || '').trim().replace(/\/+$/, '');
+  if (!/^https:\/\//i.test(base)) throw new Error('Chưa nhập địa chỉ API của nhà cung cấp AI (Cài đặt, mục 2).');
+  if (!s.compatKey) throw new Error('Chưa nhập API key của nhà cung cấp AI (Cài đặt, mục 2).');
+  if (!s.compatModel) throw new Error('Chưa chọn model của nhà cung cấp AI (Cài đặt, mục 2).');
+  const origin = new URL(base).origin + '/*';
+  if (!(await chrome.permissions.contains({ origins: [origin] }))) {
+    throw new Error(`Chưa cấp quyền truy cập ${new URL(base).host}: vào Cài đặt, bấm Lưu và chọn Cho phép.`);
+  }
+  const url = base + '/chat/completions';
+  const headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + s.compatKey };
+  const body = {
+    model: s.compatModel.trim(),
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user', content: user }
+    ],
+    temperature: 0,
+    max_tokens: 4000
+  };
+  const send = async () => {
+    try {
+      return await streamChat(url, headers, body);
+    } catch (e) {
+      // lỗi mạng, 429, 5xx: thử lại một lần; quá thời gian chờ thì không thử lại
+      if (e.timeout || (e.status && e.status < 500 && e.status !== 429)) throw e;
+      await new Promise(res => setTimeout(res, 2000));
+      return await streamChat(url, headers, body);
+    }
+  };
+  let data = await send();
+  let text = (data.choices?.[0]?.message?.content || '').trim();
+  if (!text) {
+    const first = describeDeepSeek(data);
+    data = await send();
+    text = (data.choices?.[0]?.message?.content || '').trim();
+    if (!text) throw new Error(`AI trả về câu trả lời rỗng 2 lần (${first} | ${describeDeepSeek(data)}).`);
+  }
+  return text;
+}
+
 async function callClaude(s, system, user) {
   if (!s.claudeKey) throw new Error('Chưa nhập API key Claude');
   const data = await fetchJson('https://api.anthropic.com/v1/messages', {
@@ -516,7 +561,9 @@ async function classifyInner(doc) {
   const user = buildUser(doc);
   const text = s.provider === 'claude'
     ? await callClaude(s, system, user)
-    : await callDeepSeek(s, system, user);
+    : s.provider === 'compat'
+      ? await callCompat(s, system, user)
+      : await callDeepSeek(s, system, user);
 
   const m = text.match(/\{[\s\S]*\}/);
   if (!m) throw new Error('AI trả về dữ liệu không đọc được: ' + text.slice(0, 120));
