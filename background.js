@@ -317,6 +317,86 @@ async function fetchJson(url, opts) {
   throw lastErr;
 }
 
+// Gọi DeepSeek kiểu stream (nhận từng phần): model "suy nghĩ" có thể cần vài phút với lời nhắc dài,
+// nên không dùng hạn chờ cố định. Còn nhận dữ liệu thì chờ tiếp (tối đa AI_TOTAL_MS); im lặng quá
+// AI_IDLE_MS thì dừng. Trả về cùng dạng với API thường để phần còn lại dùng chung.
+const AI_TOTAL_MS = 5 * 60 * 1000;
+const AI_IDLE_MS = 90 * 1000;
+
+async function streamChat(url, headers, body) {
+  const ctrl = new AbortController();
+  const started = Date.now();
+  let lastData = started;
+  let why = '';
+  let content = '';
+  let reasoning = 0;
+  let finish = '';
+  let model = '';
+  const watchdog = setInterval(() => {
+    const now = Date.now();
+    if (now - started > AI_TOTAL_MS) why = 'total';
+    else if (now - lastData > AI_IDLE_MS) why = 'idle';
+    if (why) ctrl.abort();
+  }, 2000);
+  try {
+    const r = await fetch(url, { method: 'POST', headers, body: JSON.stringify({ ...body, stream: true }), signal: ctrl.signal });
+    if (!r.ok) {
+      const e = new Error(`HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
+      e.status = r.status;
+      throw e;
+    }
+    const reader = r.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      lastData = Date.now();
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, i).trim();
+        buf = buf.slice(i + 1);
+        if (!line.startsWith('data:')) continue; // dòng trống, ": keep-alive"
+        const payload = line.slice(5).trim();
+        if (payload === '[DONE]') continue;
+        let j;
+        try {
+          j = JSON.parse(payload);
+        } catch (e) {
+          continue;
+        }
+        if (j.error) throw new Error('DeepSeek: ' + String(j.error.message || JSON.stringify(j.error)).slice(0, 200));
+        model = j.model || model;
+        const c = j.choices && j.choices[0];
+        if (!c) continue;
+        const d = c.delta || {};
+        if (d.reasoning_content) reasoning += d.reasoning_content.length;
+        if (d.content) content += d.content;
+        if (c.finish_reason) finish = c.finish_reason;
+      }
+    }
+  } catch (e) {
+    if (!ctrl.signal.aborted) throw e;
+    const secs = Math.round((Date.now() - started) / 1000);
+    const state = content ? 'đang trả lời dở' : reasoning ? `model vẫn đang suy nghĩ, đã nghĩ ${reasoning} ký tự` : 'chưa nhận được chữ nào';
+    const err = new Error(
+      why === 'total'
+        ? `AI chưa trả lời xong sau ${secs} giây (${state})`
+        : `AI im lặng ${AI_IDLE_MS / 1000} giây (${state}${content || reasoning ? '' : ' - nhà cung cấp AI có thể đang quá tải'})`
+    );
+    err.timeout = true;
+    throw err;
+  } finally {
+    clearInterval(watchdog);
+  }
+  return {
+    model,
+    choices: [{ finish_reason: finish, message: { content, reasoning_content: reasoning ? `(${reasoning} ký tự)` : '' } }],
+    usage: { completion_tokens: '?' }
+  };
+}
+
 // Mô tả ngắn một phản hồi DeepSeek, để ghi vào thông báo lỗi khi câu trả lời rỗng
 function describeDeepSeek(data) {
   const c = (data && data.choices && data.choices[0]) || {};
@@ -354,26 +434,32 @@ async function callDeepSeek(s, system, user) {
       return await send(jsonMode, maxTokens);
     }
   };
-  const send = (jsonMode, maxTokens) =>
-    fetchJson('https://api.deepseek.com/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + s.deepseekKey },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: user }
-        ],
-        ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
-        temperature: 0,
-        max_tokens: maxTokens
-      })
-    });
+  const send = async (jsonMode, maxTokens) => {
+    const body = {
+      model,
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: user }
+      ],
+      ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
+      temperature: 0,
+      max_tokens: maxTokens
+    };
+    const headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + s.deepseekKey };
+    try {
+      return await streamChat('https://api.deepseek.com/chat/completions', headers, body);
+    } catch (e) {
+      // lỗi mạng, 429, 5xx: thử lại một lần; quá thời gian chờ thì không thử lại (đã chờ đủ lâu)
+      if (e.timeout || (e.status && e.status < 500 && e.status !== 429)) throw e;
+      await new Promise(res => setTimeout(res, 2000));
+      return await streamChat('https://api.deepseek.com/chat/completions', headers, body);
+    }
+  };
   const contentOf = data => (data.choices?.[0]?.message?.content || '').trim();
 
   // max_tokens rộng: model "suy nghĩ" tính cả phần suy nghĩ vào giới hạn này, 500 như trước có thể
   // hết trước khi kịp viết câu trả lời. DeepSeek chỉ tính tiền số token thực sự sinh ra.
-  let data = await ask(true, 4000);
+  let data = await ask(true, 8000);
   let text = contentOf(data);
   if (!text) {
     // Câu trả lời rỗng (chế độ JSON thỉnh thoảng trả rỗng, hoặc hết token): thử lại một lần,

@@ -941,10 +941,10 @@
 
       const doc = await extractDoc(it);
       await patchItem(i, { excerpt: doc.text.slice(0, 800) });
-      // chờ AI tối đa 8 phút (background tự giới hạn 90 giây mỗi lần gọi, có thử lại)
+      // chờ AI tối đa 12 phút (background tự giới hạn: tối đa 5 phút mỗi lần gọi, gọi lại 1 lần nếu trả lời rỗng)
       const res = await Promise.race([
         send({ type: 'CLASSIFY', doc }),
-        sleep(8 * 60 * 1000).then(() => ({ error: 'không nhận được kết quả sau 8 phút' }))
+        sleep(12 * 60 * 1000).then(() => ({ error: 'không nhận được kết quả sau 12 phút' }))
       ]);
       if (res.error) throw new Error('AI: ' + res.error);
 
