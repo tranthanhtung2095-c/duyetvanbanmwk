@@ -18,7 +18,11 @@
   const send = msg =>
     new Promise(res => {
       try {
-        chrome.runtime.sendMessage(msg, r => res(r || {}));
+        chrome.runtime.sendMessage(msg, r => {
+          // service worker bị tắt giữa chừng: không có câu trả lời, báo lỗi thay vì coi như rỗng
+          const err = chrome.runtime.lastError;
+          res(r || (err ? { error: 'Mất kết nối với extension: ' + err.message } : {}));
+        });
       } catch (e) {
         res({ error: String(e) });
       }
@@ -937,7 +941,11 @@
 
       const doc = await extractDoc(it);
       await patchItem(i, { excerpt: doc.text.slice(0, 800) });
-      const res = await send({ type: 'CLASSIFY', doc });
+      // chờ AI tối đa 8 phút (background tự giới hạn 90 giây mỗi lần gọi, có thử lại)
+      const res = await Promise.race([
+        send({ type: 'CLASSIFY', doc }),
+        sleep(8 * 60 * 1000).then(() => ({ error: 'không nhận được kết quả sau 8 phút' }))
+      ]);
       if (res.error) throw new Error('AI: ' + res.error);
 
       const removed = (res.recipients || []).filter(id => commented.has(String(id)));

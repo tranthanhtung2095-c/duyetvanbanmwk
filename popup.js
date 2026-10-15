@@ -1,5 +1,13 @@
 const $ = id => document.getElementById(id);
 
+// Văn bản đang xử lý: hiện bước hiện tại thay cho "Chờ" để biết lượt chạy đứng ở đâu
+const PHASE = {
+  opening: 'Đang mở',
+  classifying: 'Đang hỏi AI',
+  sending: 'Đang chọn người nhận',
+  submitted: 'Đã bấm Đồng ý'
+};
+
 const LABEL = {
   pending: 'Chờ',
   done: 'Đã đẩy',
@@ -67,7 +75,7 @@ async function render() {
           const who = (i.recipients || []).map(id => names[id] || id).join(', ');
           const note = i.error || i.reason || '';
           return `<tr><td>${esc(i.code)}<div class="why">${esc((i.title || '').slice(0, 40))}</div></td>
-            <td><span class="tag ${esc(i.status)}">${LABEL[i.status] || esc(i.status)}</span></td>
+            <td><span class="tag ${esc(i.status)}">${(i.status === 'pending' && PHASE[i.phase]) || LABEL[i.status] || esc(i.status)}</span></td>
             <td>${esc(who)}${who && note ? '<div class="why">' + esc(note) + '</div>' : esc(note)}</td></tr>`;
         })
         .join('') +

@@ -287,23 +287,31 @@ function buildUser(doc) {
   ].join('\n');
 }
 
+// Mỗi lần gọi AI chờ tối đa AI_TIMEOUT_MS: DeepSeek lúc quá tải có thể giữ kết nối rất lâu
+// mà không trả lời, trước đây làm lượt chạy đứng mãi ở trạng thái "Chờ".
+const AI_TIMEOUT_MS = 90 * 1000;
+
 async function fetchJson(url, opts) {
   let lastErr;
   for (let attempt = 0; attempt < 2; attempt++) {
-    let r;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), AI_TIMEOUT_MS);
+    let status = 0;
     try {
-      r = await fetch(url, opts);
+      const r = await fetch(url, { ...opts, signal: ctrl.signal });
+      status = r.status;
+      if (r.ok) return await r.json(); // hạn chờ áp dụng cả lúc đọc nội dung trả về
+      lastErr = new Error(`HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
     } catch (e) {
-      // lỗi mạng: thử lại một lần
-      lastErr = e;
-      await new Promise(res => setTimeout(res, 2000));
-      continue;
+      // lỗi mạng hoặc quá thời gian chờ
+      lastErr = ctrl.signal.aborted
+        ? new Error(`AI không phản hồi sau ${AI_TIMEOUT_MS / 1000} giây (nhà cung cấp AI có thể đang quá tải)`)
+        : e;
+    } finally {
+      clearTimeout(timer);
     }
-    if (r.ok) return await r.json();
-    const body = (await r.text()).slice(0, 200);
-    lastErr = new Error(`HTTP ${r.status}: ${body}`);
-    // lỗi 4xx (trừ 429) là lỗi cấu hình/key, không thử lại
-    if (r.status !== 429 && r.status < 500) throw lastErr;
+    // lỗi 4xx (trừ 429) là lỗi cấu hình/key/model, không thử lại; còn lại thử lại một lần
+    if (status >= 400 && status < 500 && status !== 429) throw lastErr;
     await new Promise(res => setTimeout(res, 2000));
   }
   throw lastErr;
@@ -405,7 +413,18 @@ async function callClaude(s, system, user) {
   return (data.content || []).map(b => b.text || '').join('');
 }
 
+// Giữ service worker sống trong lúc chờ AI (Chrome có thể tắt service worker đang rảnh,
+// làm mất câu trả lời gửi về trang MEDworking)
 async function classify(doc) {
+  const keepAlive = setInterval(() => chrome.runtime.getPlatformInfo(() => {}), 20000);
+  try {
+    return await classifyInner(doc);
+  } finally {
+    clearInterval(keepAlive);
+  }
+}
+
+async function classifyInner(doc) {
   const s = await getSettings();
   const system = buildSystem(s);
   const user = buildUser(doc);
